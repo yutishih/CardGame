@@ -5,18 +5,18 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Card.h"
-#include "Player.generated.h"
+#include "BattlePlayer.generated.h"
 
 /**
- * APlayer - 代表遊戲中的一個玩家
+ * UBattlePlayer - 代表遊戲中的一個玩家
  */
 UCLASS()
-class CARDGAME_API APlayer : public UObject
+class CARDGAME_API UBattlePlayer : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	APlayer();
+	UBattlePlayer();
 
 	// 初始化玩家
 	void Initialize(int32 PlayerId);

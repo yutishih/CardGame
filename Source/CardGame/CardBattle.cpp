@@ -154,7 +154,7 @@ void ACardBattle::InitializeGame()
 	{
 		if (!Players[i])
 		{
-			Players[i] = NewObject<APlayer>();
+			Players[i] = NewObject<UBattlePlayer>();
 			Players[i]->Initialize(i);
 		}
 

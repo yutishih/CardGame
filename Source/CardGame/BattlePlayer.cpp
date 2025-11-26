@@ -1,27 +1,27 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "Player.h"
+#include "BattlePlayer.h"
 
-APlayer::APlayer()
+UBattlePlayer::UBattlePlayer()
 	: PlayerID(0)
 	, Deck(nullptr)
 	, Score(0)
 {
 }
 
-void APlayer::Initialize(int32 PlayerId)
+void UBattlePlayer::Initialize(int32 PlayerId)
 {
 	PlayerID = PlayerId;
 	Hand.Empty();
 	Score = 0;
 }
 
-void APlayer::SetDeck(UCardDeck* InDeck)
+void UBattlePlayer::SetDeck(UCardDeck* InDeck)
 {
 	Deck = InDeck;
 }
 
-void APlayer::DrawCardsToHand(int32 NumberOfCards)
+void UBattlePlayer::DrawCardsToHand(int32 NumberOfCards)
 {
 	if (!Deck)
 	{
@@ -33,7 +33,7 @@ void APlayer::DrawCardsToHand(int32 NumberOfCards)
 	Hand.Append(DrawnCards);
 }
 
-FCard APlayer::PlayCard(int32 CardIndex)
+FCard UBattlePlayer::PlayCard(int32 CardIndex)
 {
 	if (CardIndex >= 0 && CardIndex < Hand.Num())
 	{
@@ -45,7 +45,7 @@ FCard APlayer::PlayCard(int32 CardIndex)
 	return FCard(0);
 }
 
-FCard APlayer::PlayCardRandom()
+FCard UBattlePlayer::PlayCardRandom()
 {
 	if (Hand.Num() > 0)
 	{
@@ -54,14 +54,4 @@ FCard APlayer::PlayCardRandom()
 	}
 
 	return FCard(0);
-}
-
-void APlayer::AddScore(int32 Points)
-{
-	Score += Points;
-}
-
-void APlayer::ResetScore()
-{
-	Score = 0;
 }

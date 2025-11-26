@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Card.h"
-#include "Player.h"
+#include "BattlePlayer.h"
 #include "CardBattle.generated.h"
 
 // 遊戲狀態枚舉
@@ -125,7 +125,7 @@ private:
 
 	// 玩家列表
 	UPROPERTY()
-	APlayer* Players[2];
+	UBattlePlayer* Players[2];
 
 	// 玩家牌組
 	UPROPERTY()
