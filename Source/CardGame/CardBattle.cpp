@@ -21,6 +21,9 @@ void ACardBattle::BeginPlay()
 	Super::BeginPlay();
 	
 	InitializeGame();
+	
+	// 自動開始遊戲
+	StartGame();
 }
 
 void ACardBattle::Tick(float DeltaTime)
