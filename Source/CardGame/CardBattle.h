@@ -8,6 +8,9 @@
 #include "BattlePlayer.h"
 #include "CardBattle.generated.h"
 
+// 前向聲明
+class UCardGameSimpleHUD;
+
 // 遊戲狀態枚舉
 UENUM(BlueprintType)
 enum class EBattleState : uint8
@@ -123,6 +126,9 @@ private:
 	// 確定最終獲勝者
 	void DetermineWinner();
 
+	// 創建 HUD
+	void CreateHUD();
+
 	// 玩家列表
 	UPROPERTY()
 	UBattlePlayer* Players[2];
@@ -160,4 +166,8 @@ private:
 	// 本回合出牌
 	FCard CurrentRoundPlayer0Card;
 	FCard CurrentRoundPlayer1Card;
+
+	// HUD Widget
+	UPROPERTY()
+	TObjectPtr<UCardGameSimpleHUD> GameHUD;
 };

@@ -1,12 +1,15 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CardBattle.h"
+#include "CardGameSimpleHUD.h"
+#include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 ACardBattle::ACardBattle()
 	: CurrentState(EBattleState::Idle)
 	, CurrentTurnPlayerId(0)
 	, CurrentTurnRemainingTime(0.0f)
-	, TurnTimeLimit(30.0f)
+	, TurnTimeLimit(5.0f)  // 5 秒回合時間
 	, Winner(-1)
 	, bPlayer0CardPlayed(false)
 	, bPlayer1CardPlayed(false)
@@ -20,9 +23,10 @@ void ACardBattle::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	InitializeGame();
+	// 創建 HUD
+	CreateHUD();
 	
-	// 自動開始遊戲
+	// 直接開始遊戲（StartGame 會調用 InitializeGame）
 	StartGame();
 }
 
@@ -335,5 +339,40 @@ void ACardBattle::DetermineWinner()
 	{
 		Winner = -1;
 		UE_LOG(LogTemp, Warning, TEXT("Game is a draw!"));
+	}
+}
+
+void ACardBattle::CreateHUD()
+{
+	// 獲取第一個玩家控制器
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No PlayerController found for HUD"));
+		return;
+	}
+
+	// 啟用滑鼠游標和 UI 點擊
+	PC->bShowMouseCursor = true;
+	PC->bEnableClickEvents = true;
+	PC->bEnableMouseOverEvents = true;
+	
+	// 設置輸入模式為 UI 和遊戲都可以控制
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	PC->SetInputMode(InputMode);
+
+	// 創建 HUD Widget
+	GameHUD = CreateWidget<UCardGameSimpleHUD>(PC, UCardGameSimpleHUD::StaticClass());
+	if (GameHUD)
+	{
+		GameHUD->SetBattleGameMode(this);
+		GameHUD->AddToViewport();
+		UE_LOG(LogTemp, Warning, TEXT("Game HUD created successfully"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create Game HUD"));
 	}
 }
