@@ -10,6 +10,7 @@
 
 // 前向聲明
 class UCardGameSimpleHUD;
+class ACardTableManager;
 
 // 遊戲狀態枚舉
 UENUM(BlueprintType)
@@ -93,6 +94,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Battle")
 	float GetRemainingTurnTime() const;
 
+	// 獲取當前回合已出的牌
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	FCard GetCurrentPlayer0Card() const { return CurrentRoundPlayer0Card; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	FCard GetCurrentPlayer1Card() const { return CurrentRoundPlayer1Card; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	bool HasPlayer0PlayedCard() const { return bPlayer0CardPlayed; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	bool HasPlayer1PlayedCard() const { return bPlayer1CardPlayed; }
+
+	// 獲取所有已出的牌（歷史記錄）
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	const TArray<FCard>& GetPlayer0PlayedCards() const { return Player0PlayedCards; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Battle")
+	const TArray<FCard>& GetPlayer1PlayedCards() const { return Player1PlayedCards; }
+
 	// 獲取上一回合的信息
 	UFUNCTION(BlueprintCallable, Category = "Battle")
 	const FRoundInfo& GetLastRoundInfo() const { return LastRoundInfo; }
@@ -170,7 +191,21 @@ private:
 	FCard CurrentRoundPlayer0Card;
 	FCard CurrentRoundPlayer1Card;
 
+	// 已出牌歷史記錄
+	TArray<FCard> Player0PlayedCards;
+	TArray<FCard> Player1PlayedCards;
+
 	// HUD Widget
 	UPROPERTY()
 	TObjectPtr<UCardGameSimpleHUD> GameHUD;
+
+	// 3D 卡牌管理器
+	UPROPERTY()
+	TObjectPtr<ACardTableManager> CardTableManager;
+
+	// 創建 3D 卡牌系統
+	void Create3DCardSystem();
+
+	// 通知 3D 卡牌出牌
+	void Notify3DCardPlayed(int32 PlayerId, int32 CardIndex, const FCard& Card);
 };

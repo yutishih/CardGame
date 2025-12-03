@@ -118,6 +118,65 @@ TSharedRef<SWidget> UCardGameSimpleHUD::RebuildWidget()
 				.ColorAndOpacity(FSlateColor(FLinearColor::Green))
 			]
 
+			// === 檯面區域 ===
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(20.0f, 20.0f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("=== TABLE ===")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
+					.ColorAndOpacity(FSlateColor(FLinearColor::Yellow))
+				]
+				// 玩家已出的牌
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 10.0f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("YOUR PLAYED CARDS:")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+						.ColorAndOpacity(FSlateColor(FLinearColor::Green))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(0.0f, 5.0f)
+					[
+						SAssignNew(Player0PlayedCardsBox, SHorizontalBox)
+					]
+				]
+				// 對手已出的牌
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 10.0f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("OPPONENT PLAYED CARDS:")))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+						.ColorAndOpacity(FSlateColor(FLinearColor::Red))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(0.0f, 5.0f)
+					[
+						SAssignNew(Player1PlayedCardsBox, SHorizontalBox)
+					]
+				]
+			]
+
 			// 上回合結果
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -182,10 +241,78 @@ TSharedRef<SWidget> UCardGameSimpleHUD::RebuildWidget()
 			.VAlign(VAlign_Center)
 			.HAlign(HAlign_Center)
 			[
-				SAssignNew(WinnerText, STextBlock)
-				.Text(FText::FromString(TEXT("")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 48))
-				.ColorAndOpacity(FSlateColor(FLinearColor::Yellow))
+				SNew(SVerticalBox)
+				// 獲勝文字
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SAssignNew(WinnerText, STextBlock)
+					.Text(FText::FromString(TEXT("")))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 48))
+					.ColorAndOpacity(FSlateColor(FLinearColor::Yellow))
+				]
+				// 遊戲結束選單（Play Again / Back to Menu）
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 20.0f)
+				.HAlign(HAlign_Center)
+				[
+					SAssignNew(GameOverMenuBox, SVerticalBox)
+					.Visibility(EVisibility::Collapsed)
+					
+					// Play Again 按鈕
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(10.0f)
+					[
+						SNew(SButton)
+						.OnClicked_Lambda([this]() -> FReply
+						{
+							return OnPlayAgainClicked();
+						})
+						.ButtonColorAndOpacity(FLinearColor(0.1f, 0.5f, 0.1f, 1.0f))
+						[
+							SNew(SBox)
+							.MinDesiredWidth(250.0f)
+							.MinDesiredHeight(60.0f)
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("Play Again")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 24))
+								.ColorAndOpacity(FSlateColor(FLinearColor::White))
+							]
+						]
+					]
+					
+					// Back to Main Menu 按鈕
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(10.0f)
+					[
+						SNew(SButton)
+						.OnClicked_Lambda([this]() -> FReply
+						{
+							return OnBackToMenuClicked();
+						})
+						.ButtonColorAndOpacity(FLinearColor(0.5f, 0.3f, 0.1f, 1.0f))
+						[
+							SNew(SBox)
+							.MinDesiredWidth(250.0f)
+							.MinDesiredHeight(60.0f)
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("Back to Main Menu")))
+								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 24))
+								.ColorAndOpacity(FSlateColor(FLinearColor::White))
+							]
+						]
+					]
+				]
 			]
 		];
 }
@@ -241,6 +368,9 @@ void UCardGameSimpleHUD::UpdateDisplay()
 	{
 		CurrentTurnText->SetText(FText::FromString(FString::Printf(TEXT("Current Turn: Player %d"), BattleGameMode->GetCurrentTurnPlayerId())));
 	}
+
+	// 更新檯面上的牌（所有已出的牌）
+	UpdatePlayedCards();
 
 	// 更新計時器（用文字和顏色表示）
 	float RemainingTime = BattleGameMode->GetRemainingTurnTime();
@@ -322,6 +452,27 @@ void UCardGameSimpleHUD::UpdateDisplay()
 			WinnerText->SetText(FText::FromString(TEXT("")));
 		}
 	}
+	
+	// 更新遊戲結束選單
+	UpdateGameOverMenu();
+}
+
+void UCardGameSimpleHUD::UpdateGameOverMenu()
+{
+	if (!GameOverMenuBox.IsValid() || !BattleGameMode)
+	{
+		return;
+	}
+	
+	// 遊戲結束時顯示選單
+	if (BattleGameMode->GetBattleState() == EBattleState::GameOver)
+	{
+		GameOverMenuBox->SetVisibility(EVisibility::Visible);
+	}
+	else
+	{
+		GameOverMenuBox->SetVisibility(EVisibility::Collapsed);
+	}
 }
 
 void UCardGameSimpleHUD::UpdatePlayerHandButtons()
@@ -388,6 +539,96 @@ void UCardGameSimpleHUD::UpdatePlayerHandButtons()
 	}
 }
 
+void UCardGameSimpleHUD::UpdatePlayedCards()
+{
+	if (!BattleGameMode)
+	{
+		return;
+	}
+
+	const TArray<FCard>& Player0Cards = BattleGameMode->GetPlayer0PlayedCards();
+	const TArray<FCard>& Player1Cards = BattleGameMode->GetPlayer1PlayedCards();
+
+	// 只有當牌數變化時才更新 UI
+	if (Player0PlayedCardsBox.IsValid() && Player0Cards.Num() != LastPlayer0CardCount)
+	{
+		LastPlayer0CardCount = Player0Cards.Num();
+		Player0PlayedCardsBox->ClearChildren();
+
+		if (Player0Cards.Num() == 0)
+		{
+			Player0PlayedCardsBox->AddSlot()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("(No cards played yet)")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Italic", 14))
+				.ColorAndOpacity(FSlateColor(FLinearColor::Gray))
+			];
+		}
+		else
+		{
+			for (const FCard& Card : Player0Cards)
+			{
+				Player0PlayedCardsBox->AddSlot()
+				.AutoWidth()
+				.Padding(3.0f)
+				[
+					SNew(SBox)
+					.MinDesiredWidth(40.0f)
+					.MinDesiredHeight(50.0f)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(FString::Printf(TEXT("[%d]"), Card.CardValue)))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
+						.ColorAndOpacity(FSlateColor(FLinearColor::Green))
+					]
+				];
+			}
+		}
+	}
+
+	if (Player1PlayedCardsBox.IsValid() && Player1Cards.Num() != LastPlayer1CardCount)
+	{
+		LastPlayer1CardCount = Player1Cards.Num();
+		Player1PlayedCardsBox->ClearChildren();
+
+		if (Player1Cards.Num() == 0)
+		{
+			Player1PlayedCardsBox->AddSlot()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("(No cards played yet)")))
+				.Font(FCoreStyle::GetDefaultFontStyle("Italic", 14))
+				.ColorAndOpacity(FSlateColor(FLinearColor::Gray))
+			];
+		}
+		else
+		{
+			for (const FCard& Card : Player1Cards)
+			{
+				Player1PlayedCardsBox->AddSlot()
+				.AutoWidth()
+				.Padding(3.0f)
+				[
+					SNew(SBox)
+					.MinDesiredWidth(40.0f)
+					.MinDesiredHeight(50.0f)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(FString::Printf(TEXT("[%d]"), Card.CardValue)))
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
+						.ColorAndOpacity(FSlateColor(FLinearColor::Red))
+					]
+				];
+			}
+		}
+	}
+}
+
 FReply UCardGameSimpleHUD::OnCardClicked(int32 CardIndex)
 {
 	if (BattleGameMode)
@@ -403,5 +644,36 @@ FReply UCardGameSimpleHUD::OnCardClicked(int32 CardIndex)
 			UE_LOG(LogTemp, Warning, TEXT("Not your turn!"));
 		}
 	}
+	return FReply::Handled();
+}
+
+FReply UCardGameSimpleHUD::OnPlayAgainClicked()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Play Again clicked!"));
+	
+	// 重新載入當前關卡
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		FString CurrentLevel = World->GetMapName();
+		CurrentLevel.RemoveFromStart(World->StreamingLevelsPrefix);
+		UGameplayStatics::OpenLevel(World, FName(*CurrentLevel));
+	}
+	
+	return FReply::Handled();
+}
+
+FReply UCardGameSimpleHUD::OnBackToMenuClicked()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Back to Main Menu clicked!"));
+	
+	// 載入主選單關卡（假設主選單是 MainMenu 或第一個關卡）
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		// 嘗試載入 MainMenu 關卡，如果沒有就載入 TheFirstMap
+		UGameplayStatics::OpenLevel(World, FName(TEXT("MainMenu")));
+	}
+	
 	return FReply::Handled();
 }

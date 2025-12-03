@@ -103,10 +103,31 @@ FReply SMainMenuWidget::OnStartClicked()
 	UE_LOG(LogTemp, Warning, TEXT("Start button clicked - Loading game map"));
 	
 	// 載入遊戲地圖
-	UWorld* World = GEngine->GetCurrentPlayWorld();
+	UWorld* World = nullptr;
+	
+	// 嘗試多種方式獲取 World
+	if (GEngine)
+	{
+		World = GEngine->GetCurrentPlayWorld();
+		
+		if (!World)
+		{
+			// 備用方法：從 GameViewport 獲取
+			if (GEngine->GameViewport)
+			{
+				World = GEngine->GameViewport->GetWorld();
+			}
+		}
+	}
+	
 	if (World)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("World found, opening TheFirstMap"));
 		UGameplayStatics::OpenLevel(World, FName(TEXT("TheFirstMap")));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to get World reference!"));
 	}
 	
 	return FReply::Handled();
@@ -127,7 +148,18 @@ FReply SMainMenuWidget::OnQuitClicked()
 	UE_LOG(LogTemp, Warning, TEXT("Quit button clicked - Exiting game"));
 	
 	// 退出遊戲
-	UWorld* World = GEngine->GetCurrentPlayWorld();
+	UWorld* World = nullptr;
+	
+	if (GEngine)
+	{
+		World = GEngine->GetCurrentPlayWorld();
+		
+		if (!World && GEngine->GameViewport)
+		{
+			World = GEngine->GameViewport->GetWorld();
+		}
+	}
+	
 	if (World)
 	{
 		APlayerController* PC = World->GetFirstPlayerController();
@@ -135,6 +167,12 @@ FReply SMainMenuWidget::OnQuitClicked()
 		{
 			UKismetSystemLibrary::QuitGame(World, PC, EQuitPreference::Quit, false);
 		}
+	}
+	
+	// 如果上面方法失敗，強制請求退出
+	if (GEngine)
+	{
+		GEngine->Exec(nullptr, TEXT("QUIT"));
 	}
 	
 	return FReply::Handled();
