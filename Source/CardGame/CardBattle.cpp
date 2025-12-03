@@ -127,6 +127,12 @@ void ACardBattle::PlayerPlayCard(int32 PlayerId, int32 CardIndex)
 		CurrentTurnPlayerId = 1 - CurrentTurnPlayerId;
 		CurrentState = CurrentTurnPlayerId == 0 ? EBattleState::WaitingForPlayer0 : EBattleState::WaitingForPlayer1;
 		CurrentTurnRemainingTime = TurnTimeLimit;
+		
+		// 如果切換到 AI（Player 1）的回合，立刻自動出牌
+		if (CurrentTurnPlayerId == 1)
+		{
+			AIPlayCard();
+		}
 	}
 }
 
@@ -224,6 +230,12 @@ void ACardBattle::GoToNextTurn()
 	CurrentTurnRemainingTime = TurnTimeLimit;
 
 	CurrentState = CurrentTurnPlayerId == 0 ? EBattleState::WaitingForPlayer0 : EBattleState::WaitingForPlayer1;
+	
+	// 如果是 AI（Player 1）的回合，立刻自動出牌
+	if (CurrentTurnPlayerId == 1)
+	{
+		AIPlayCard();
+	}
 }
 
 void ACardBattle::HandleTurnTimer(float DeltaTime)
@@ -339,6 +351,50 @@ void ACardBattle::DetermineWinner()
 	{
 		Winner = -1;
 		UE_LOG(LogTemp, Warning, TEXT("Game is a draw!"));
+	}
+}
+
+void ACardBattle::AIPlayCard()
+{
+	if (CurrentTurnPlayerId != 1 || !Players[1])
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("AI (Player 1) plays a card"));
+
+	// AI 隨機出牌
+	FCard AICard = Players[1]->PlayCardRandom();
+
+	if (AICard.IsValid())
+	{
+		CurrentRoundPlayer1Card = AICard;
+		bPlayer1CardPlayed = true;
+
+		// 如果雙方都出牌了，結算本回合
+		if (bPlayer0CardPlayed && bPlayer1CardPlayed)
+		{
+			ResolveRound(CurrentRoundPlayer0Card, CurrentRoundPlayer1Card);
+
+			// 檢查遊戲是否結束
+			if (!CheckGameOver())
+			{
+				// 進入下一回合
+				GoToNextTurn();
+			}
+			else
+			{
+				DetermineWinner();
+				CurrentState = EBattleState::GameOver;
+			}
+		}
+		else
+		{
+			// 切換到玩家 0 的回合
+			CurrentTurnPlayerId = 0;
+			CurrentState = EBattleState::WaitingForPlayer0;
+			CurrentTurnRemainingTime = TurnTimeLimit;
+		}
 	}
 }
 

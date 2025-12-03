@@ -126,6 +126,9 @@ private:
 	// 確定最終獲勝者
 	void DetermineWinner();
 
+	// AI 出牌
+	void AIPlayCard();
+
 	// 創建 HUD
 	void CreateHUD();
 
