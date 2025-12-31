@@ -32,4 +32,12 @@ struct FCardData : public FTableRowBase
     // 所屬系列（例如 "BaseSet", "Expansion1"）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
     FString Series;
+
+    // 卡牌插圖
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card|Visual")
+    TSoftObjectPtr<UTexture2D> CardImage;
+
+    // 卡牌背景圖
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card|Visual")
+    TSoftObjectPtr<UTexture2D> BackgroundImage;
 };

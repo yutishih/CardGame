@@ -68,9 +68,13 @@ protected:
 	UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
 	TObjectPtr<UTextBlock> WinnerText;
 
-	// 卡牌按鈕類（用於動態創建）
-	UPROPERTY(EditDefaultsOnly, Category = "CardGame|UI")
-	TSubclassOf<UUserWidget> CardButtonClass;
+	// 卡牌 Widget 類別
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CardGame")
+	TSubclassOf<class UCardWidget> CardWidgetClass;
+
+	// 卡牌資料表
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CardGame")
+	TObjectPtr<class UDataTable> CardDataTable;
 
 private:
 	// 遊戲模式引用

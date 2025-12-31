@@ -1,8 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CardBattle.h"
-#include "CardGameSimpleHUD.h"
+#include "CardGameHUD.h"
 #include "CardTableManager.h"
+#include "Data/DT_CardData.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -101,19 +102,27 @@ void ACardBattle::PlayerPlayCard(int32 PlayerId, int32 CardIndex)
 	{
 		CurrentRoundPlayer0Card = PlayedCard;
 		bPlayer0CardPlayed = true;
-		Players[0]->AddScore(PlayedCard.CardValue);
+		
+		// 使用 DataTable 中的 Power 作為分數
+		int32 ScoreToAdd = GetCardPower(PlayedCard.CardValue);
+		Players[0]->AddScore(ScoreToAdd);
+		
 		Player0PlayedCards.Add(PlayedCard);  // 加入歷史記錄
 		Notify3DCardPlayed(0, CardIndex, PlayedCard);  // 通知 3D 卡牌系統
-		UE_LOG(LogTemp, Warning, TEXT("Player 0 played %d, score now: %d"), PlayedCard.CardValue, Players[0]->GetScore());
+		UE_LOG(LogTemp, Warning, TEXT("Player 0 played %d (Power: %d), score now: %d"), PlayedCard.CardValue, ScoreToAdd, Players[0]->GetScore());
 	}
 	else
 	{
 		CurrentRoundPlayer1Card = PlayedCard;
 		bPlayer1CardPlayed = true;
-		Players[1]->AddScore(PlayedCard.CardValue);
+		
+		// 使用 DataTable 中的 Power 作為分數
+		int32 ScoreToAdd = GetCardPower(PlayedCard.CardValue);
+		Players[1]->AddScore(ScoreToAdd);
+		
 		Player1PlayedCards.Add(PlayedCard);  // 加入歷史記錄
 		Notify3DCardPlayed(1, CardIndex, PlayedCard);  // 通知 3D 卡牌系統
-		UE_LOG(LogTemp, Warning, TEXT("Player 1 played %d, score now: %d"), PlayedCard.CardValue, Players[1]->GetScore());
+		UE_LOG(LogTemp, Warning, TEXT("Player 1 played %d (Power: %d), score now: %d"), PlayedCard.CardValue, ScoreToAdd, Players[1]->GetScore());
 	}
 
 	// 如果雙方都出牌了，結算本回合
@@ -188,7 +197,15 @@ void ACardBattle::InitializeGame()
 			PlayerDecks[i] = NewObject<UCardDeck>();
 		}
 
-		PlayerDecks[i]->Initialize();
+		if (CardDataTable)
+		{
+			PlayerDecks[i]->InitializeFromDataTable(CardDataTable);
+		}
+		else
+		{
+			PlayerDecks[i]->Initialize();
+		}
+
 		Players[i]->SetDeck(PlayerDecks[i]);
 
 		// 每個玩家抽10張牌
@@ -433,16 +450,23 @@ void ACardBattle::CreateHUD()
 	PC->SetInputMode(InputMode);
 
 	// 創建 HUD Widget
-	GameHUD = CreateWidget<UCardGameSimpleHUD>(PC, UCardGameSimpleHUD::StaticClass());
-	if (GameHUD)
+	if (HUDWidgetClass)
 	{
-		GameHUD->SetBattleGameMode(this);
-		GameHUD->AddToViewport();
-		UE_LOG(LogTemp, Warning, TEXT("Game HUD created successfully"));
+		GameHUD = CreateWidget<UCardGameHUD>(PC, HUDWidgetClass);
+		if (GameHUD)
+		{
+			GameHUD->InitializeHUD(this);
+			GameHUD->AddToViewport();
+			UE_LOG(LogTemp, Warning, TEXT("Game HUD created successfully"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to create Game HUD"));
+		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to create Game HUD"));
+		UE_LOG(LogTemp, Warning, TEXT("HUDWidgetClass not set in CardBattle GameMode"));
 	}
 }
 
@@ -463,6 +487,28 @@ void ACardBattle::Create3DCardSystem()
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to create 3D Card System"));
 	}
+}
+
+int32 ACardBattle::GetCardPower(int32 CardValue) const
+{
+	if (!CardDataTable)
+	{
+		// 如果沒有設定 DataTable，預設回傳 CardValue
+		return CardValue;
+	}
+
+	// 假設 RowName 就是 CardValue 的字串形式
+	FName RowName = FName(*FString::FromInt(CardValue));
+	static const FString ContextString(TEXT("GetCardPower"));
+	FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+
+	if (CardData)
+	{
+		return CardData->Power;
+	}
+
+	// 找不到資料時回傳 0
+	return 0;
 }
 
 void ACardBattle::Notify3DCardPlayed(int32 PlayerId, int32 CardIndex, const FCard& Card)

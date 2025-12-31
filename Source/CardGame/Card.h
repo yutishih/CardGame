@@ -39,6 +39,9 @@ public:
 	// 初始化牌組
 	void Initialize();
 
+	// 從 DataTable 初始化牌組
+	void InitializeFromDataTable(class UDataTable* DataTable);
+
 	// 從牌組中抽取指定數量的卡牌
 	void DrawCards(int32 NumberOfCards, TArray<FCard>& OutCards);
 

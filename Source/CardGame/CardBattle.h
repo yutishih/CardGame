@@ -197,7 +197,15 @@ private:
 
 	// HUD Widget
 	UPROPERTY()
-	TObjectPtr<UCardGameSimpleHUD> GameHUD;
+	TObjectPtr<class UCardGameHUD> GameHUD;
+
+	// HUD Widget Class
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UCardGameHUD> HUDWidgetClass;
+
+	// 卡牌資料表 (用於查詢 Power)
+	UPROPERTY(EditDefaultsOnly, Category = "Data")
+	TObjectPtr<class UDataTable> CardDataTable;
 
 	// 3D 卡牌管理器
 	UPROPERTY()
@@ -205,6 +213,9 @@ private:
 
 	// 創建 3D 卡牌系統
 	void Create3DCardSystem();
+
+	// 獲取卡牌的 Power 數值 (從 DataTable)
+	int32 GetCardPower(int32 CardValue) const;
 
 	// 通知 3D 卡牌出牌
 	void Notify3DCardPlayed(int32 PlayerId, int32 CardIndex, const FCard& Card);

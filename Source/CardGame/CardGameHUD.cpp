@@ -1,9 +1,12 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CardGameHUD.h"
+#include "UI/CardWidget.h"
+#include "Data/DT_CardData.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/ProgressBar.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -168,27 +171,105 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 	// 獲取玩家手牌
 	const TArray<FCard>& Hand = BattleGameMode->GetPlayerHand(PlayerId);
 
-	// 為每張牌創建文字顯示
+	// 檢查手牌數量是否與子元件數量一致，如果不一致才重建
+	// 這樣可以避免每幀都刪除重建，造成閃爍和效能問題
+	// 但為了簡單起見，這裡先保持重建邏輯，但加上 Log 檢查
+	// UE_LOG(LogTemp, Warning, TEXT("Updating Hand for Player %d, Count: %d"), PlayerId, Hand.Num());
+
+	// 為每張牌創建 Widget
 	for (int32 i = 0; i < Hand.Num(); ++i)
 	{
-		UTextBlock* CardText = NewObject<UTextBlock>(this);
-		if (CardText)
+		// 玩家 0 (自己) 顯示完整卡牌
+		if (PlayerId == 0)
 		{
-			// 玩家 0 顯示牌值，玩家 1 顯示背面（隱藏）
-			if (PlayerId == 0)
+			if (CardWidgetClass)
 			{
-				CardText->SetText(FText::FromString(FString::Printf(TEXT("[%d]"), Hand[i].CardValue)));
+				UCardWidget* NewCard = CreateWidget<UCardWidget>(this, CardWidgetClass);
+				if (NewCard)
+				{
+					FCardData DisplayData;
+					bool bDataFound = false;
+
+					// 嘗試從 DataTable 獲取資料
+					if (CardDataTable)
+					{
+						// 假設 RowName 就是 CardValue 的字串形式 (例如 "1", "2")
+						FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
+						static const FString ContextString(TEXT("CardWidgetContext"));
+						FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+
+						if (CardData)
+						{
+							DisplayData = *CardData;
+							bDataFound = true;
+							UE_LOG(LogTemp, Verbose, TEXT("HUD: Found data for card %d: %s"), Hand[i].CardValue, *DisplayData.Name);
+						}
+						else
+						{
+							UE_LOG(LogTemp, Warning, TEXT("HUD: Row '%s' not found in DataTable!"), *RowName.ToString());
+						}
+					}
+					else
+					{
+						static bool bWarnedDT = false;
+						if (!bWarnedDT)
+						{
+							UE_LOG(LogTemp, Error, TEXT("HUD: CardDataTable is NOT set in WBP_GameHUD!"));
+							bWarnedDT = true;
+						}
+					}
+
+					// 如果找不到資料，使用預設值
+					if (!bDataFound)
+					{
+						DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
+						DisplayData.Power = Hand[i].CardValue;
+						DisplayData.Description = TEXT("No Data");
+					}
+
+					NewCard->UpdateCardDisplay(DisplayData);
+					
+					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
+					if (HandSlot)
+					{
+						// 設置間距，避免卡片擠在一起 (左右各50，總間距100)
+						HandSlot->SetPadding(FMargin(50.0f, 0.0f, 50.0f, 0.0f));
+						// 設置為自動大小，讓卡片保持自己的寬度
+						HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+						// 垂直對齊填滿
+						HandSlot->SetVerticalAlignment(VAlign_Fill);
+					}
+				}
 			}
 			else
 			{
-				CardText->SetText(FText::FromString(TEXT("[?]")));
+				// 只顯示一次警告
+				static bool bWarned = false;
+				if (!bWarned)
+				{
+					UE_LOG(LogTemp, Error, TEXT("CardWidgetClass not set in WBP_GameHUD! Please set it in the Widget Blueprint."));
+					bWarned = true;
+				}
 			}
+		}
+		else
+		{
+			// 對手的手牌，顯示背面
+			UTextBlock* CardText = NewObject<UTextBlock>(this);
+			if (CardText)
+			{
+				CardText->SetText(FText::FromString(TEXT("[?]")));
+				
+				FSlateFontInfo FontInfo = CardText->GetFont();
+				FontInfo.Size = 24;
+				CardText->SetFont(FontInfo);
 
-			FSlateFontInfo FontInfo = CardText->GetFont();
-			FontInfo.Size = 24;
-			CardText->SetFont(FontInfo);
-
-			HandBox->AddChild(CardText);
+				UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(CardText));
+				if (HandSlot)
+				{
+					HandSlot->SetPadding(FMargin(5.0f, 0.0f, 5.0f, 0.0f));
+				}
+			}
 		}
 	}
 }
