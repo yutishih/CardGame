@@ -5,6 +5,40 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/PanelWidget.h"
 #include "Components/SizeBox.h"
+#include "Components/Button.h"
+
+void UCardWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (ClickButton)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CardWidget: ClickButton found and bound!"));
+		ClickButton->OnClicked.AddDynamic(this, &UCardWidget::OnCardClicked);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("CardWidget: ClickButton NOT found! Check WBP_Card naming."));
+	}
+}
+
+void UCardWidget::SetOnClicked(FOnCardClicked InOnClicked)
+{
+	OnClicked = InOnClicked;
+}
+
+void UCardWidget::OnCardClicked()
+{
+	if (OnClicked.IsBound())
+	{
+		OnClicked.Execute(CardIndex);
+		UE_LOG(LogTemp, Warning, TEXT("CardWidget: Clicked! Index: %d"), CardIndex);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CardWidget: Clicked but no delegate bound! Index: %d"), CardIndex);
+	}
+}
 
 void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 {
@@ -50,15 +84,28 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Set Canvas Slot Size to %dx%d"), Texture->GetSizeX(), Texture->GetSizeY());
 				}
 
-				// 嘗試設定 SizeBox 大小 (如果是 SizeBox 的子物件)
-				if (UPanelWidget* Parent = CardImage->GetParent())
+				// 嘗試設定 SizeBox 大小 (如果是 SizeBox 的子物件，或是上層有 SizeBox)
+				UPanelWidget* CurrentParent = CardImage->GetParent();
+				bool bFoundSizeBox = false;
+				while (CurrentParent)
 				{
-					if (USizeBox* SizeBox = Cast<USizeBox>(Parent))
+					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Checking Parent: %s"), *CurrentParent->GetClass()->GetName());
+					if (USizeBox* SizeBox = Cast<USizeBox>(CurrentParent))
 					{
 						SizeBox->SetWidthOverride(Texture->GetSizeX());
 						SizeBox->SetHeightOverride(Texture->GetSizeY());
-						UE_LOG(LogTemp, Warning, TEXT("CardWidget: Forced SizeBox overrides to %dx%d"), Texture->GetSizeX(), Texture->GetSizeY());
+						SizeBox->SetMinDesiredWidth(Texture->GetSizeX());
+						SizeBox->SetMinDesiredHeight(Texture->GetSizeY());
+						UE_LOG(LogTemp, Warning, TEXT("CardWidget: Forced SizeBox overrides (Width/Height/Min) to %dx%d"), Texture->GetSizeX(), Texture->GetSizeY());
+						bFoundSizeBox = true;
+						break;
 					}
+					CurrentParent = CurrentParent->GetParent();
+				}
+
+				if (!bFoundSizeBox)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("CardWidget: No SizeBox found in parent hierarchy for CardImage."));
 				}
 
 				CardImage->SetBrushTintColor(FLinearColor::White);
@@ -142,6 +189,26 @@ void UCardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 					*CardImage->GetParent()->GetClass()->GetName(),
 					CardImage->Slot ? *CardImage->Slot->GetClass()->GetName() : TEXT("NULL")
 				);
+
+				// Traverse up to debug hierarchy sizes
+				UPanelWidget* Current = CardImage->GetParent();
+				while (Current)
+				{
+					FVector2D CurSize = Current->GetCachedGeometry().GetLocalSize();
+					UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Hierarchy: %s, Size: %s"), *Current->GetClass()->GetName(), *CurSize.ToString());
+					
+					if (USizeBox* SB = Cast<USizeBox>(Current))
+					{
+						UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: SizeBox Settings - WidthOverride: %f, HeightOverride: %f"), SB->GetWidthOverride(), SB->GetHeightOverride());
+					}
+
+					if (Current == GetRootWidget())
+					{
+						UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Reached RootWidget"));
+						break;
+					}
+					Current = Current->GetParent();
+				}
 			}
 		}
 	}

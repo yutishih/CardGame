@@ -165,16 +165,78 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 		return;
 	}
 
-	// 清空現有內容
-	HandBox->ClearChildren();
-
 	// 獲取玩家手牌
 	const TArray<FCard>& Hand = BattleGameMode->GetPlayerHand(PlayerId);
 
-	// 檢查手牌數量是否與子元件數量一致，如果不一致才重建
-	// 這樣可以避免每幀都刪除重建，造成閃爍和效能問題
-	// 但為了簡單起見，這裡先保持重建邏輯，但加上 Log 檢查
-	// UE_LOG(LogTemp, Warning, TEXT("Updating Hand for Player %d, Count: %d"), PlayerId, Hand.Num());
+	// 檢查是否需要重建 (數量不同時才重建)
+	// 注意：這裡簡單用數量判斷。如果遊戲中有交換手牌等機制，可能需要更嚴謹的檢查 (例如檢查 CardID)
+	if (HandBox->GetChildrenCount() == Hand.Num())
+	{
+		// 數量相同，嘗試更新現有 Widget
+		bool bUpdateSuccess = true;
+		for (int32 i = 0; i < Hand.Num(); ++i)
+		{
+			UWidget* ChildWidget = HandBox->GetChildAt(i);
+			if (PlayerId == 0)
+			{
+				// 玩家 0 應該是 CardWidget
+				if (UCardWidget* CardWidget = Cast<UCardWidget>(ChildWidget))
+				{
+					// 獲取資料並更新
+					FCardData DisplayData;
+					bool bDataFound = false;
+					if (CardDataTable)
+					{
+						FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
+						static const FString ContextString(TEXT("CardWidgetContext"));
+						FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+						if (CardData)
+						{
+							DisplayData = *CardData;
+							bDataFound = true;
+						}
+					}
+					
+					if (!bDataFound)
+					{
+						DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
+						DisplayData.Power = Hand[i].CardValue;
+						DisplayData.Description = TEXT("No Data");
+					}
+					
+					CardWidget->UpdateCardDisplay(DisplayData);
+					
+					// 確保索引正確 (因為手牌可能會變動)
+					CardWidget->CardIndex = i;
+					// 確保回調有綁定 (如果是重建的 Widget 已經綁定過，但如果是更新的可能需要檢查)
+					CardWidget->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
+				}
+				else
+				{
+					// 類型不對，強制重建
+					bUpdateSuccess = false;
+					break;
+				}
+			}
+			else
+			{
+				// 對手應該是 TextBlock
+				if (!Cast<UTextBlock>(ChildWidget))
+				{
+					bUpdateSuccess = false;
+					break;
+				}
+			}
+		}
+
+		if (bUpdateSuccess)
+		{
+			return; // 更新成功，不需要重建
+		}
+	}
+
+	// 清空現有內容 (只有在數量不對或類型不對時才執行)
+	HandBox->ClearChildren();
 
 	// 為每張牌創建 Widget
 	for (int32 i = 0; i < Hand.Num(); ++i)
@@ -202,11 +264,11 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 						{
 							DisplayData = *CardData;
 							bDataFound = true;
-							UE_LOG(LogTemp, Verbose, TEXT("HUD: Found data for card %d: %s"), Hand[i].CardValue, *DisplayData.Name);
+							// UE_LOG(LogTemp, Verbose, TEXT("HUD: Found data for card %d: %s"), Hand[i].CardValue, *DisplayData.Name);
 						}
 						else
 						{
-							UE_LOG(LogTemp, Warning, TEXT("HUD: Row '%s' not found in DataTable!"), *RowName.ToString());
+							// UE_LOG(LogTemp, Warning, TEXT("HUD: Row '%s' not found in DataTable!"), *RowName.ToString());
 						}
 					}
 					else
@@ -229,6 +291,10 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 
 					NewCard->UpdateCardDisplay(DisplayData);
 					
+					// 設定索引和點擊回調
+					NewCard->CardIndex = i;
+					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
+
 					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
 					if (HandSlot)
 					{
@@ -243,31 +309,21 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 			}
 			else
 			{
-				// 只顯示一次警告
-				static bool bWarned = false;
-				if (!bWarned)
+				// 對手的手牌，顯示背面
+				UTextBlock* CardText = NewObject<UTextBlock>(this);
+				if (CardText)
 				{
-					UE_LOG(LogTemp, Error, TEXT("CardWidgetClass not set in WBP_GameHUD! Please set it in the Widget Blueprint."));
-					bWarned = true;
-				}
-			}
-		}
-		else
-		{
-			// 對手的手牌，顯示背面
-			UTextBlock* CardText = NewObject<UTextBlock>(this);
-			if (CardText)
-			{
-				CardText->SetText(FText::FromString(TEXT("[?]")));
-				
-				FSlateFontInfo FontInfo = CardText->GetFont();
-				FontInfo.Size = 24;
-				CardText->SetFont(FontInfo);
+					CardText->SetText(FText::FromString(TEXT("[?]")));
+					
+					FSlateFontInfo FontInfo = CardText->GetFont();
+					FontInfo.Size = 24;
+					CardText->SetFont(FontInfo);
 
-				UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(CardText));
-				if (HandSlot)
-				{
-					HandSlot->SetPadding(FMargin(5.0f, 0.0f, 5.0f, 0.0f));
+					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(CardText));
+					if (HandSlot)
+					{
+						HandSlot->SetPadding(FMargin(5.0f, 0.0f, 5.0f, 0.0f));
+					}
 				}
 			}
 		}
