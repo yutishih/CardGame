@@ -7,6 +7,8 @@
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Components/ProgressBar.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -19,6 +21,37 @@ void UCardGameHUD::NativeConstruct()
 	{
 		AGameModeBase* GameMode = UGameplayStatics::GetGameMode(GetWorld());
 		BattleGameMode = Cast<ACardBattle>(GameMode);
+	}
+
+	// 嘗試將手牌容器置中
+	if (Player0HandBox)
+	{
+		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Player0HandBox->Slot))
+		{
+			CanvasSlot->SetAnchors(FAnchors(0.5f, 1.0f));
+			CanvasSlot->SetAlignment(FVector2D(0.5f, 1.0f));
+			CanvasSlot->SetPosition(FVector2D(0.0f, 0.0f)); // 確保位置偏移歸零
+			CanvasSlot->SetAutoSize(true);
+		}
+		else if (UVerticalBoxSlot* VSlot = Cast<UVerticalBoxSlot>(Player0HandBox->Slot))
+		{
+			VSlot->SetHorizontalAlignment(HAlign_Center);
+		}
+	}
+
+	if (Player1HandBox)
+	{
+		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Player1HandBox->Slot))
+		{
+			CanvasSlot->SetAnchors(FAnchors(0.5f, 0.0f));
+			CanvasSlot->SetAlignment(FVector2D(0.5f, 0.0f));
+			CanvasSlot->SetPosition(FVector2D(0.0f, 0.0f)); // 確保位置偏移歸零
+			CanvasSlot->SetAutoSize(true);
+		}
+		else if (UVerticalBoxSlot* VSlot = Cast<UVerticalBoxSlot>(Player1HandBox->Slot))
+		{
+			VSlot->SetHorizontalAlignment(HAlign_Center);
+		}
 	}
 }
 
@@ -295,11 +328,25 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					NewCard->CardIndex = i;
 					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
 
+					// 扇形效果計算
+					float CenterIndex = (Hand.Num() - 1) / 2.0f;
+					float DistanceFromCenter = i - CenterIndex;
+					float RotationAngle = DistanceFromCenter * 5.0f; // 每張卡旋轉 5 度
+
+					// 設定旋轉軸心在卡片下方，產生扇形效果
+					// 0.5 = X軸中心, 2.0 = Y軸 (卡片高度的 2 倍處，即卡片底部再往下一個卡片高度)
+					NewCard->SetRenderTransformPivot(FVector2D(0.5f, 2.0f));
+					NewCard->SetRenderTransformAngle(RotationAngle);
+
+					// 縮小卡牌以防止超出螢幕
+					NewCard->SetRenderScale(FVector2D(0.75f, 0.75f));
+
 					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
 					if (HandSlot)
 					{
-						// 設置間距，避免卡片擠在一起 (左右各50，總間距100)
-						HandSlot->SetPadding(FMargin(50.0f, 0.0f, 50.0f, 0.0f));
+						// 設置負邊距，讓卡牌重疊 (左右各-50，總重疊100)
+						// 這樣可以讓卡牌之間緊密排列並部分重疊，配合旋轉形成扇形
+						HandSlot->SetPadding(FMargin(-50.0f, 0.0f, -50.0f, 0.0f));
 						// 設置為自動大小，讓卡片保持自己的寬度
 						HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 						// 垂直對齊填滿
