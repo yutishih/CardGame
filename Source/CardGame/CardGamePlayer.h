@@ -40,6 +40,10 @@ public:
 	void PlayRandomCard();
 
 protected:
+	// Camera Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	class UCameraComponent* CameraComponent;
+
 	// 玩家 ID (0 或 1)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CardGame")
 	int32 PlayerID;

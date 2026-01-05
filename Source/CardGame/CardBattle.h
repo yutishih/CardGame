@@ -10,7 +10,6 @@
 
 // 前向聲明
 class UCardGameSimpleHUD;
-class ACardTableManager;
 
 // 遊戲狀態枚舉
 UENUM(BlueprintType)
@@ -207,16 +206,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Data")
 	TObjectPtr<class UDataTable> CardDataTable;
 
-	// 3D 卡牌管理器
-	UPROPERTY()
-	TObjectPtr<ACardTableManager> CardTableManager;
-
-	// 創建 3D 卡牌系統
-	void Create3DCardSystem();
-
 	// 獲取卡牌的 Power 數值 (從 DataTable)
 	int32 GetCardPower(int32 CardValue) const;
-
-	// 通知 3D 卡牌出牌
-	void Notify3DCardPlayed(int32 PlayerId, int32 CardIndex, const FCard& Card);
 };

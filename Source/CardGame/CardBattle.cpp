@@ -1,8 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CardBattle.h"
+#include "CardGamePlayer.h"
 #include "CardGameHUD.h"
-#include "CardTableManager.h"
 #include "Data/DT_CardData.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
@@ -19,6 +19,7 @@ ACardBattle::ACardBattle()
 	, CurrentRoundPlayer1Card(FCard(0))
 {
 	PrimaryActorTick.bCanEverTick = true;
+	DefaultPawnClass = ACardGamePlayer::StaticClass();
 }
 
 void ACardBattle::BeginPlay()
@@ -27,9 +28,6 @@ void ACardBattle::BeginPlay()
 	
 	// 創建 HUD
 	CreateHUD();
-	
-	// 創建 3D 卡牌系統
-	Create3DCardSystem();
 	
 	// 直接開始遊戲（StartGame 會調用 InitializeGame）
 	StartGame();
@@ -108,7 +106,6 @@ void ACardBattle::PlayerPlayCard(int32 PlayerId, int32 CardIndex)
 		Players[0]->AddScore(ScoreToAdd);
 		
 		Player0PlayedCards.Add(PlayedCard);  // 加入歷史記錄
-		Notify3DCardPlayed(0, CardIndex, PlayedCard);  // 通知 3D 卡牌系統
 		UE_LOG(LogTemp, Warning, TEXT("Player 0 played %d (Power: %d), score now: %d"), PlayedCard.CardValue, ScoreToAdd, Players[0]->GetScore());
 	}
 	else
@@ -121,7 +118,6 @@ void ACardBattle::PlayerPlayCard(int32 PlayerId, int32 CardIndex)
 		Players[1]->AddScore(ScoreToAdd);
 		
 		Player1PlayedCards.Add(PlayedCard);  // 加入歷史記錄
-		Notify3DCardPlayed(1, CardIndex, PlayedCard);  // 通知 3D 卡牌系統
 		UE_LOG(LogTemp, Warning, TEXT("Player 1 played %d (Power: %d), score now: %d"), PlayedCard.CardValue, ScoreToAdd, Players[1]->GetScore());
 	}
 
@@ -292,7 +288,6 @@ void ACardBattle::HandleTurnTimer(float DeltaTime)
 				bPlayer0CardPlayed = true;
 				Players[0]->AddScore(RandomCard.CardValue);
 				Player0PlayedCards.Add(RandomCard);  // 加入歷史記錄
-				Notify3DCardPlayed(0, 0, RandomCard);  // 通知 3D 卡牌系統（隨機出牌，索引用 0）
 				UE_LOG(LogTemp, Warning, TEXT("Player 0 auto-played %d, score now: %d"), RandomCard.CardValue, Players[0]->GetScore());
 			}
 			else
@@ -301,7 +296,6 @@ void ACardBattle::HandleTurnTimer(float DeltaTime)
 				bPlayer1CardPlayed = true;
 				Players[1]->AddScore(RandomCard.CardValue);
 				Player1PlayedCards.Add(RandomCard);  // 加入歷史記錄
-				Notify3DCardPlayed(1, 0, RandomCard);  // 通知 3D 卡牌系統
 				UE_LOG(LogTemp, Warning, TEXT("Player 1 auto-played %d, score now: %d"), RandomCard.CardValue, Players[1]->GetScore());
 			}
 
@@ -398,7 +392,6 @@ void ACardBattle::AIPlayCard()
 		bPlayer1CardPlayed = true;
 		Players[1]->AddScore(AICard.CardValue);
 		Player1PlayedCards.Add(AICard);  // 加入歷史記錄
-		Notify3DCardPlayed(1, 0, AICard);  // 通知 3D 卡牌系統
 		UE_LOG(LogTemp, Warning, TEXT("AI played %d, score now: %d"), AICard.CardValue, Players[1]->GetScore());
 
 		// 如果雙方都出牌了，結算本回合
@@ -470,25 +463,6 @@ void ACardBattle::CreateHUD()
 	}
 }
 
-void ACardBattle::Create3DCardSystem()
-{
-	// 在場景中生成 CardTableManager
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-
-	CardTableManager = GetWorld()->SpawnActor<ACardTableManager>(ACardTableManager::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-	
-	if (CardTableManager)
-	{
-		CardTableManager->Initialize(this);
-		UE_LOG(LogTemp, Warning, TEXT("3D Card System created successfully"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to create 3D Card System"));
-	}
-}
-
 int32 ACardBattle::GetCardPower(int32 CardValue) const
 {
 	if (!CardDataTable)
@@ -509,12 +483,4 @@ int32 ACardBattle::GetCardPower(int32 CardValue) const
 
 	// 找不到資料時回傳 0
 	return 0;
-}
-
-void ACardBattle::Notify3DCardPlayed(int32 PlayerId, int32 CardIndex, const FCard& Card)
-{
-	if (CardTableManager)
-	{
-		CardTableManager->PlayCardToTable(PlayerId, CardIndex, Card);
-	}
 }

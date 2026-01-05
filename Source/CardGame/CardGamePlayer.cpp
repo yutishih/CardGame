@@ -1,12 +1,24 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CardGamePlayer.h"
+#include "Camera/CameraComponent.h"
 
 ACardGamePlayer::ACardGamePlayer()
 	: PlayerID(0)
 	, BattleGameMode(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Create Root Component
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+
+	// Create Camera
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+	CameraComponent->SetupAttachment(RootComponent);
+
+	// Set position to (0, 0, 5000) and look down
+	CameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 5000.0f));
+	CameraComponent->SetRelativeRotation(FRotator(-90.0f, -90.0f, 0.0f)); // Pitch -90 (down), Yaw -90 (adjust as needed, usually 0 or -90 depending on world orientation)
 }
 
 void ACardGamePlayer::BeginPlay()
