@@ -30,7 +30,7 @@ void UCardGameHUD::NativeConstruct()
 		{
 			CanvasSlot->SetAnchors(FAnchors(0.5f, 1.0f));
 			CanvasSlot->SetAlignment(FVector2D(0.5f, 1.0f));
-			CanvasSlot->SetPosition(FVector2D(0.0f, 0.0f)); // 確保位置偏移歸零
+			CanvasSlot->SetPosition(FVector2D(0.0f, -100.0f)); // 往上移動一點
 			CanvasSlot->SetAutoSize(true);
 		}
 		else if (UVerticalBoxSlot* VSlot = Cast<UVerticalBoxSlot>(Player0HandBox->Slot))
@@ -339,7 +339,7 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					NewCard->SetRenderTransformAngle(RotationAngle);
 
 					// 縮小卡牌以防止超出螢幕
-					NewCard->SetRenderScale(FVector2D(0.75f, 0.75f));
+					NewCard->SetRenderScale(FVector2D(1.0f, 1.0f));
 
 					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
 					if (HandSlot)

@@ -72,16 +72,20 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 			{
 				CardImage->SetBrushFromTexture(Texture);
 				
+				// 設定固定大小 250x350
+				const float CardWidth = 250.0f;
+				const float CardHeight = 350.0f;
+
 				// 強制設定筆刷大小，確保 UI 知道圖片尺寸
 				FSlateBrush Brush = CardImage->GetBrush();
-				Brush.ImageSize = FVector2D(Texture->GetSizeX(), Texture->GetSizeY());
+				Brush.ImageSize = FVector2D(CardWidth, CardHeight);
 				CardImage->SetBrush(Brush);
 
 				// 嘗試設定 Canvas Slot 大小 (如果是 Canvas Panel 的子物件)
 				if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(CardImage->Slot))
 				{
-					CanvasSlot->SetSize(FVector2D(Texture->GetSizeX(), Texture->GetSizeY()));
-					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Set Canvas Slot Size to %dx%d"), Texture->GetSizeX(), Texture->GetSizeY());
+					CanvasSlot->SetSize(FVector2D(CardWidth, CardHeight));
+					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Set Canvas Slot Size to %fx%f"), CardWidth, CardHeight);
 				}
 
 				// 嘗試設定 SizeBox 大小 (如果是 SizeBox 的子物件，或是上層有 SizeBox)
@@ -92,11 +96,11 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Checking Parent: %s"), *CurrentParent->GetClass()->GetName());
 					if (USizeBox* SizeBox = Cast<USizeBox>(CurrentParent))
 					{
-						SizeBox->SetWidthOverride(Texture->GetSizeX());
-						SizeBox->SetHeightOverride(Texture->GetSizeY());
-						SizeBox->SetMinDesiredWidth(Texture->GetSizeX());
-						SizeBox->SetMinDesiredHeight(Texture->GetSizeY());
-						UE_LOG(LogTemp, Warning, TEXT("CardWidget: Forced SizeBox overrides (Width/Height/Min) to %dx%d"), Texture->GetSizeX(), Texture->GetSizeY());
+						SizeBox->SetWidthOverride(CardWidth);
+						SizeBox->SetHeightOverride(CardHeight);
+						SizeBox->SetMinDesiredWidth(CardWidth);
+						SizeBox->SetMinDesiredHeight(CardHeight);
+						UE_LOG(LogTemp, Warning, TEXT("CardWidget: Forced SizeBox overrides (Width/Height/Min) to %fx%f"), CardWidth, CardHeight);
 						bFoundSizeBox = true;
 						break;
 					}
