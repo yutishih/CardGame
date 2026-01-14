@@ -6,6 +6,9 @@
 #include "Data/DT_CardData.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Camera/CameraComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/MovementComponent.h"
 
 ACardBattle::ACardBattle()
 	: CurrentState(EBattleState::Idle)
@@ -22,15 +25,64 @@ ACardBattle::ACardBattle()
 	DefaultPawnClass = ACardGamePlayer::StaticClass();
 }
 
+UClass* ACardBattle::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	return ACardGamePlayer::StaticClass();
+}
+
 void ACardBattle::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// 創建 HUD
 	CreateHUD();
 	
 	// 直接開始遊戲（StartGame 會調用 InitializeGame）
 	StartGame();
+}
+
+void ACardBattle::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (NewPlayer)
+	{
+		// Ensure pawn is ACardGamePlayer and setup camera
+		APawn* PlayerPawn = NewPlayer->GetPawn();
+		if (PlayerPawn)
+		{
+			// Try to find a camera component by iteration (works for ACardGamePlayer and others)
+			UCameraComponent* Cam = PlayerPawn->FindComponentByClass<UCameraComponent>();
+			if (Cam)
+			{
+				Cam->SetRelativeLocation(FVector(0.0f, 0.0f, 5000.0f));
+				Cam->SetRelativeRotation(FRotator(-90.0f, -90.0f, 0.0f));
+			}
+			else
+			{
+				// Move actor if no camera component found (fallback)
+				PlayerPawn->SetActorLocation(FVector(0.0f, 0.0f, 5000.0f));
+				PlayerPawn->SetActorRotation(FRotator(-90.0f, -90.0f, 0.0f));
+			}
+			
+			// Force view target
+			NewPlayer->SetViewTarget(PlayerPawn);
+			
+			// Also disable control rotation on the controller just in case
+			NewPlayer->SetControlRotation(FRotator(-90.0f, -90.0f, 0.0f));
+
+			// Setup Mouse Cursor and Input Mode being TopDown
+			NewPlayer->bShowMouseCursor = true;
+			NewPlayer->bEnableClickEvents = true;
+			NewPlayer->bEnableMouseOverEvents = true;
+
+			// Set Input Mode to Game And UI, do not lock mouse
+			FInputModeGameAndUI InputMode;
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			InputMode.SetHideCursorDuringCapture(false);
+			NewPlayer->SetInputMode(InputMode);
+		}
+	}
 }
 
 void ACardBattle::Tick(float DeltaTime)

@@ -58,4 +58,8 @@ protected:
 	void HandleInput_PlayCard3();
 	void HandleInput_PlayCard4();
 	void HandleInput_PlayCard5();
+
+	// Input Handlers for checking movement
+	void HandleMoveForward(float Value);
+	void HandleMoveRight(float Value);
 };
