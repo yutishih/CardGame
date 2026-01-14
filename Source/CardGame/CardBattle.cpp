@@ -338,17 +338,23 @@ void ACardBattle::HandleTurnTimer(float DeltaTime)
 			{
 				CurrentRoundPlayer0Card = RandomCard;
 				bPlayer0CardPlayed = true;
-				Players[0]->AddScore(RandomCard.CardValue);
+				
+				int32 ScoreToAdd = GetCardPower(RandomCard.CardValue);
+				Players[0]->AddScore(ScoreToAdd);
 				Player0PlayedCards.Add(RandomCard);  // 加入歷史記錄
-				UE_LOG(LogTemp, Warning, TEXT("Player 0 auto-played %d, score now: %d"), RandomCard.CardValue, Players[0]->GetScore());
+				UE_LOG(LogTemp, Warning, TEXT("Player 0 auto-played %d (Power: %d), score now: %d"), 
+					RandomCard.CardValue, ScoreToAdd, Players[0]->GetScore());
 			}
 			else
 			{
 				CurrentRoundPlayer1Card = RandomCard;
 				bPlayer1CardPlayed = true;
-				Players[1]->AddScore(RandomCard.CardValue);
+				
+				int32 ScoreToAdd = GetCardPower(RandomCard.CardValue);
+				Players[1]->AddScore(ScoreToAdd);
 				Player1PlayedCards.Add(RandomCard);  // 加入歷史記錄
-				UE_LOG(LogTemp, Warning, TEXT("Player 1 auto-played %d, score now: %d"), RandomCard.CardValue, Players[1]->GetScore());
+				UE_LOG(LogTemp, Warning, TEXT("Player 1 auto-played %d (Power: %d), score now: %d"), 
+					RandomCard.CardValue, ScoreToAdd, Players[1]->GetScore());
 			}
 
 			// 如果雙方都出牌了，結算本回合
@@ -442,9 +448,11 @@ void ACardBattle::AIPlayCard()
 	{
 		CurrentRoundPlayer1Card = AICard;
 		bPlayer1CardPlayed = true;
-		Players[1]->AddScore(AICard.CardValue);
+		
+		int32 ScoreToAdd = GetCardPower(AICard.CardValue);
+		Players[1]->AddScore(ScoreToAdd);
 		Player1PlayedCards.Add(AICard);  // 加入歷史記錄
-		UE_LOG(LogTemp, Warning, TEXT("AI played %d, score now: %d"), AICard.CardValue, Players[1]->GetScore());
+		UE_LOG(LogTemp, Warning, TEXT("AI played %d (Power: %d), score now: %d"), AICard.CardValue, ScoreToAdd, Players[1]->GetScore());
 
 		// 如果雙方都出牌了，結算本回合
 		if (bPlayer0CardPlayed && bPlayer1CardPlayed)

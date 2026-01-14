@@ -210,55 +210,53 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 		for (int32 i = 0; i < Hand.Num(); ++i)
 		{
 			UWidget* ChildWidget = HandBox->GetChildAt(i);
-			if (PlayerId == 0)
+			
+			// 所有玩家都使用 CardWidget
+			if (UCardWidget* CardWidget = Cast<UCardWidget>(ChildWidget))
 			{
-				// 玩家 0 應該是 CardWidget
-				if (UCardWidget* CardWidget = Cast<UCardWidget>(ChildWidget))
+				// 獲取資料並更新
+				FCardData DisplayData;
+				bool bDataFound = false;
+				if (CardDataTable)
 				{
-					// 獲取資料並更新
-					FCardData DisplayData;
-					bool bDataFound = false;
-					if (CardDataTable)
+					FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
+					static const FString ContextString(TEXT("CardWidgetContext"));
+					FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+					if (CardData)
 					{
-						FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
-						static const FString ContextString(TEXT("CardWidgetContext"));
-						FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
-						if (CardData)
-						{
-							DisplayData = *CardData;
-							bDataFound = true;
-						}
+						DisplayData = *CardData;
+						bDataFound = true;
 					}
-					
-					if (!bDataFound)
-					{
-						DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
-						DisplayData.Power = Hand[i].CardValue;
-						DisplayData.Description = TEXT("No Data");
-					}
-					
-					CardWidget->UpdateCardDisplay(DisplayData);
-					
-					// 確保索引正確 (因為手牌可能會變動)
-					CardWidget->CardIndex = i;
-					// 確保回調有綁定 (如果是重建的 Widget 已經綁定過，但如果是更新的可能需要檢查)
+				}
+				
+				if (!bDataFound)
+				{
+					DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
+					DisplayData.Power = Hand[i].CardValue;
+					DisplayData.Description = TEXT("No Data");
+				}
+				
+				CardWidget->UpdateCardDisplay(DisplayData);
+				
+				// 確保索引正確 (因為手牌可能會變動)
+				CardWidget->CardIndex = i;
+				
+				// 只有玩家 0 (自己) 才綁定點擊事件
+				if (PlayerId == 0)
+				{
 					CardWidget->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
 				}
 				else
 				{
-					// 類型不對，強制重建
-					bUpdateSuccess = false;
-					break;
+					// 清除綁定，避免誤觸
+					CardWidget->SetOnClicked(FOnCardClicked()); 
 				}
 			}
 			else
 			{
-				// 對手應該是 TextBlock
-				if (!Cast<UTextBlock>(ChildWidget))
-				{
-					bUpdateSuccess = false;
-					break;
-				}
+				// 類型不對，強制重建
+				bUpdateSuccess = false;
+				break;
 			}
 		}
 
@@ -274,103 +272,85 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 	// 為每張牌創建 Widget
 	for (int32 i = 0; i < Hand.Num(); ++i)
 	{
-		// 玩家 0 (自己) 顯示完整卡牌
-		if (PlayerId == 0)
+		// 所有玩家都顯示完整卡牌
+		if (CardWidgetClass)
 		{
-			if (CardWidgetClass)
+			UCardWidget* NewCard = CreateWidget<UCardWidget>(this, CardWidgetClass);
+			if (NewCard)
 			{
-				UCardWidget* NewCard = CreateWidget<UCardWidget>(this, CardWidgetClass);
-				if (NewCard)
+				FCardData DisplayData;
+				bool bDataFound = false;
+
+				// 嘗試從 DataTable 獲取資料
+				if (CardDataTable)
 				{
-					FCardData DisplayData;
-					bool bDataFound = false;
+					// 假設 RowName 就是 CardValue 的字串形式 (例如 "1", "2")
+					FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
+					static const FString ContextString(TEXT("CardWidgetContext"));
+					FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
 
-					// 嘗試從 DataTable 獲取資料
-					if (CardDataTable)
+					if (CardData)
 					{
-						// 假設 RowName 就是 CardValue 的字串形式 (例如 "1", "2")
-						FName RowName = FName(*FString::FromInt(Hand[i].CardValue));
-						static const FString ContextString(TEXT("CardWidgetContext"));
-						FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
-
-						if (CardData)
-						{
-							DisplayData = *CardData;
-							bDataFound = true;
-							// UE_LOG(LogTemp, Verbose, TEXT("HUD: Found data for card %d: %s"), Hand[i].CardValue, *DisplayData.Name);
-						}
-						else
-						{
-							// UE_LOG(LogTemp, Warning, TEXT("HUD: Row '%s' not found in DataTable!"), *RowName.ToString());
-						}
+						DisplayData = *CardData;
+						bDataFound = true;
 					}
 					else
 					{
-						static bool bWarnedDT = false;
-						if (!bWarnedDT)
-						{
-							UE_LOG(LogTemp, Error, TEXT("HUD: CardDataTable is NOT set in WBP_GameHUD!"));
-							bWarnedDT = true;
-						}
-					}
-
-					// 如果找不到資料，使用預設值
-					if (!bDataFound)
-					{
-						DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
-						DisplayData.Power = Hand[i].CardValue;
-						DisplayData.Description = TEXT("No Data");
-					}
-
-					NewCard->UpdateCardDisplay(DisplayData);
-					
-					// 設定索引和點擊回調
-					NewCard->CardIndex = i;
-					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
-
-					// 扇形效果計算
-					float CenterIndex = (Hand.Num() - 1) / 2.0f;
-					float DistanceFromCenter = i - CenterIndex;
-					float RotationAngle = DistanceFromCenter * 5.0f; // 每張卡旋轉 5 度
-
-					// 設定旋轉軸心在卡片下方，產生扇形效果
-					// 0.5 = X軸中心, 2.0 = Y軸 (卡片高度的 2 倍處，即卡片底部再往下一個卡片高度)
-					NewCard->SetRenderTransformPivot(FVector2D(0.5f, 2.0f));
-					NewCard->SetRenderTransformAngle(RotationAngle);
-
-					// 縮小卡牌以防止超出螢幕
-					NewCard->SetRenderScale(FVector2D(1.0f, 1.0f));
-
-					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
-					if (HandSlot)
-					{
-						// 設置負邊距，讓卡牌重疊 (左右各-50，總重疊100)
-						// 這樣可以讓卡牌之間緊密排列並部分重疊，配合旋轉形成扇形
-						HandSlot->SetPadding(FMargin(-50.0f, 0.0f, -50.0f, 0.0f));
-						// 設置為自動大小，讓卡片保持自己的寬度
-						HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
-						// 垂直對齊填滿
-						HandSlot->SetVerticalAlignment(VAlign_Fill);
+						// UE_LOG(LogTemp, Warning, TEXT("HUD: Row '%s' not found in DataTable!"), *RowName.ToString());
 					}
 				}
-			}
-			else
-			{
-				// 對手的手牌，顯示背面
-				UTextBlock* CardText = NewObject<UTextBlock>(this);
-				if (CardText)
+				else
 				{
-					CardText->SetText(FText::FromString(TEXT("[?]")));
-					
-					FSlateFontInfo FontInfo = CardText->GetFont();
-					FontInfo.Size = 24;
-					CardText->SetFont(FontInfo);
-
-					UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(CardText));
-					if (HandSlot)
+					static bool bWarnedDT = false;
+					if (!bWarnedDT)
 					{
-						HandSlot->SetPadding(FMargin(5.0f, 0.0f, 5.0f, 0.0f));
+						UE_LOG(LogTemp, Error, TEXT("HUD: CardDataTable is NOT set in WBP_GameHUD!"));
+						bWarnedDT = true;
 					}
+				}
+
+				// 如果找不到資料，使用預設值
+				if (!bDataFound)
+				{
+					DisplayData.Name = FString::Printf(TEXT("Card %d"), Hand[i].CardValue);
+					DisplayData.Power = Hand[i].CardValue;
+					DisplayData.Description = TEXT("No Data");
+				}
+
+				NewCard->UpdateCardDisplay(DisplayData);
+				
+				// 設定索引和點擊回調
+				NewCard->CardIndex = i;
+				
+				// 只有玩家 0 綁定點擊
+				if (PlayerId == 0)
+				{
+					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
+				}
+
+				// 扇形效果計算
+				float CenterIndex = (Hand.Num() - 1) / 2.0f;
+				float DistanceFromCenter = i - CenterIndex;
+				float RotationAngle = DistanceFromCenter * 5.0f; // 每張卡旋轉 5 度
+
+				// 設定旋轉軸心在卡片下方，產生扇形效果
+				// 0.5 = X軸中心, 2.0 = Y軸 (卡片高度的 2 倍處，即卡片底部再往下一個卡片高度)
+				NewCard->SetRenderTransformPivot(FVector2D(0.5f, 2.0f));
+				NewCard->SetRenderTransformAngle(RotationAngle);
+
+				// 縮小卡牌以防止超出螢幕
+				NewCard->SetRenderScale(FVector2D(1.0f, 1.0f));
+
+				UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
+				if (HandSlot)
+				{
+					// 設置負邊距，讓卡牌重疊 (左右各-50，總重疊100)
+					// 這樣可以讓卡牌之間緊密排列並部分重疊，配合旋轉形成扇形
+					HandSlot->SetPadding(FMargin(-50.0f, 0.0f, -50.0f, 0.0f));
+					// 設置為自動大小，讓卡片保持自己的寬度
+					HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+					// 垂直對齊填滿
+					HandSlot->SetVerticalAlignment(VAlign_Fill);
 				}
 			}
 		}
