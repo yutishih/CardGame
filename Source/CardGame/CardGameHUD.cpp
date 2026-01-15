@@ -344,13 +344,13 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 				UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
 				if (HandSlot)
 				{
-					// 設置負邊距，讓卡牌重疊 (左右各-50，總重疊100)
+					// 設置負邊距，讓卡牌重疊 (左右各-25，總重疊50) - 配合縮小後的卡牌
 					// 這樣可以讓卡牌之間緊密排列並部分重疊，配合旋轉形成扇形
-					HandSlot->SetPadding(FMargin(-50.0f, 0.0f, -50.0f, 0.0f));
+					HandSlot->SetPadding(FMargin(-25.0f, 0.0f, -25.0f, 0.0f));
 					// 設置為自動大小，讓卡片保持自己的寬度
 					HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
-					// 垂直對齊填滿
-					HandSlot->SetVerticalAlignment(VAlign_Fill);
+					// 垂直對齊改為底部對齊，避免被拉伸到整個容器高度 (500)
+					HandSlot->SetVerticalAlignment(VAlign_Bottom);
 				}
 			}
 		}

@@ -512,14 +512,14 @@ void UCardGameSimpleHUD::UpdatePlayerHandButtons()
 			.ButtonColorAndOpacity(FLinearColor(0.2f, 0.6f, 0.2f, 1.0f))
 			[
 				SNew(SBox)
-				.MinDesiredWidth(60.0f)
-				.MinDesiredHeight(80.0f)
+				.MinDesiredWidth(30.0f)
+				.MinDesiredHeight(40.0f)
 				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(FString::Printf(TEXT("%d"), CardValue)))
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 24))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
 					.ColorAndOpacity(FSlateColor(FLinearColor::White))
 				]
 			]

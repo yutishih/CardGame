@@ -26,8 +26,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Card")
 	void UpdateCardDisplay(const FCardData& CardData);
 
+	// 強制設置卡牌大小
+	void ForceCardSize();
+
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeConstruct() override;
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 protected:
 	// 綁定 UI 元件 (需要在 Widget Blueprint 中建立同名的元件)

@@ -6,6 +6,7 @@
 #include "Components/PanelWidget.h"
 #include "Components/SizeBox.h"
 #include "Components/Button.h"
+#include "Engine/Engine.h"
 
 void UCardWidget::NativeConstruct()
 {
@@ -20,6 +21,8 @@ void UCardWidget::NativeConstruct()
 	{
 		UE_LOG(LogTemp, Error, TEXT("CardWidget: ClickButton NOT found! Check WBP_Card naming."));
 	}
+
+	ForceCardSize();
 }
 
 void UCardWidget::SetOnClicked(FOnCardClicked InOnClicked)
@@ -72,54 +75,15 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 			{
 				CardImage->SetBrushFromTexture(Texture);
 				
-				// 設定固定大小 250x350
-				const float CardWidth = 250.0f;
-				const float CardHeight = 350.0f;
-
-				// 強制設定筆刷大小，確保 UI 知道圖片尺寸
-				FSlateBrush Brush = CardImage->GetBrush();
-				Brush.ImageSize = FVector2D(CardWidth, CardHeight);
-				CardImage->SetBrush(Brush);
-
-				// 嘗試設定 Canvas Slot 大小 (如果是 Canvas Panel 的子物件)
-				if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(CardImage->Slot))
-				{
-					CanvasSlot->SetSize(FVector2D(CardWidth, CardHeight));
-					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Set Canvas Slot Size to %fx%f"), CardWidth, CardHeight);
-				}
-
-				// 嘗試設定 SizeBox 大小 (如果是 SizeBox 的子物件，或是上層有 SizeBox)
-				UPanelWidget* CurrentParent = CardImage->GetParent();
-				bool bFoundSizeBox = false;
-				while (CurrentParent)
-				{
-					UE_LOG(LogTemp, Warning, TEXT("CardWidget: Checking Parent: %s"), *CurrentParent->GetClass()->GetName());
-					if (USizeBox* SizeBox = Cast<USizeBox>(CurrentParent))
-					{
-						SizeBox->SetWidthOverride(CardWidth);
-						SizeBox->SetHeightOverride(CardHeight);
-						SizeBox->SetMinDesiredWidth(CardWidth);
-						SizeBox->SetMinDesiredHeight(CardHeight);
-						UE_LOG(LogTemp, Warning, TEXT("CardWidget: Forced SizeBox overrides (Width/Height/Min) to %fx%f"), CardWidth, CardHeight);
-						bFoundSizeBox = true;
-						break;
-					}
-					CurrentParent = CurrentParent->GetParent();
-				}
-
-				if (!bFoundSizeBox)
-				{
-					UE_LOG(LogTemp, Warning, TEXT("CardWidget: No SizeBox found in parent hierarchy for CardImage."));
-				}
+				ForceCardSize();
 
 				CardImage->SetBrushTintColor(FLinearColor::White);
 				CardImage->SetColorAndOpacity(FLinearColor::White);
 				CardImage->SetVisibility(ESlateVisibility::Visible);
 				
-				UE_LOG(LogTemp, Warning, TEXT("CardWidget: Texture loaded. Size: %dx%d. Visibility: %s"), 
+				UE_LOG(LogTemp, Warning, TEXT("CardWidget: Texture loaded. Size: %dx%d."), 
 					Texture->GetSizeX(), 
-					Texture->GetSizeY(),
-					*UEnum::GetValueAsString(CardImage->GetVisibility())
+					Texture->GetSizeY()
 				);
 			}
 			else
@@ -130,13 +94,11 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("CardWidget: CardData.CardImage is NULL for card %s!"), *CardData.Name);
-			// 如果沒有圖片，可以隱藏或顯示預設圖
-			// CardImage->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("CardWidget: CardImage widget NOT found! Check WBP_Card naming and IsVariable."));
+		UE_LOG(LogTemp, Error, TEXT("CardWidget: CardImage widget NOT found! Check WBP_Card naming."));
 	}
 
 	// 更新背景圖片
@@ -150,6 +112,23 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 				BackgroundImage->SetBrushFromTexture(BgTexture);
 			}
 		}
+	}
+}
+
+void UCardWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+
+	FVector2D LocalSize = InGeometry.GetLocalSize();
+	FVector2D AbsoluteSize = InGeometry.GetAbsoluteSize();
+	
+	UE_LOG(LogTemp, Warning, TEXT("CardWidget Hovered: Index %d. Local Size: %s, Absolute Size: %s"), 
+		CardIndex, *LocalSize.ToString(), *AbsoluteSize.ToString());
+
+	if (GEngine)
+	{
+		FString Msg = FString::Printf(TEXT("HOVER Index %d! Size: %s"), CardIndex, *LocalSize.ToString());
+		GEngine->AddOnScreenDebugMessage(200 + CardIndex, 2.0f, FColor::Red, Msg);
 	}
 }
 
@@ -186,6 +165,12 @@ void UCardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 				Brush.GetResourceObject() ? *Brush.GetResourceObject()->GetName() : TEXT("NULL")
 			);
 
+			if (GEngine)
+			{
+				FString Msg = FString::Printf(TEXT("Card Index %d Size: %s (Desired: 125x175)"), CardIndex, *Brush.ImageSize.ToString());
+				GEngine->AddOnScreenDebugMessage(100 + CardIndex, 1.0f, FColor::Green, Msg);
+			}
+
 			// Log Parent and Slot info
 			if (CardImage->GetParent())
 			{
@@ -215,5 +200,59 @@ void UCardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 				}
 			}
 		}
+	}
+}
+
+void UCardWidget::ForceCardSize()
+{
+	if (!CardImage) return;
+
+	// Note: 125x175 is 50% of 250x350
+	const float CardWidth = 125.0f;
+	const float CardHeight = 175.0f;
+	
+	// 設定圖片區域高度為使用者指定的 80 (原先 160 的 50%)
+	const float ImageHeight = 80.0f; 
+
+	// Force Brush Size
+	FSlateBrush Brush = CardImage->GetBrush();
+	Brush.ImageSize = FVector2D(CardWidth, ImageHeight);
+	CardImage->SetBrush(Brush);
+
+	// Try Canvas Slot
+	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(CardImage->Slot))
+	{
+		CanvasSlot->SetSize(FVector2D(CardWidth, ImageHeight));
+	}
+
+	// Try SizeBox (Parent hierarchy)
+	UPanelWidget* CurrentParent = CardImage->GetParent();
+	bool bIsInnerBox = true; // 標記是否為最內層的 Box (包覆圖片用的)
+
+	while (CurrentParent)
+	{
+		if (USizeBox* SizeBox = Cast<USizeBox>(CurrentParent))
+		{
+			SizeBox->SetWidthOverride(CardWidth);
+			
+			if (bIsInnerBox)
+			{
+				// 內層 SizeBox：只設定為圖片高度，避免推擠文字
+				SizeBox->SetHeightOverride(ImageHeight);
+				SizeBox->SetMinDesiredHeight(ImageHeight);
+				bIsInnerBox = false; // 下一個找到的 SizeBox 就是外層了
+				UE_LOG(LogTemp, Warning, TEXT("CardWidget: Inner SizeBox set to %fx%f"), CardWidth, ImageHeight);
+			}
+			else
+			{
+				// 外層 SizeBox (Root)：設定為完整卡牌高度
+				SizeBox->SetHeightOverride(CardHeight);
+				SizeBox->SetMinDesiredHeight(CardHeight);
+				UE_LOG(LogTemp, Warning, TEXT("CardWidget: Outer SizeBox set to %fx%f"), CardWidth, CardHeight);
+			}
+
+			SizeBox->SetMinDesiredWidth(CardWidth);
+		}
+		CurrentParent = CurrentParent->GetParent();
 	}
 }
