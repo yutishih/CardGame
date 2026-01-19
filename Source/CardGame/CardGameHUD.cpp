@@ -180,6 +180,17 @@ void UCardGameHUD::UpdateUI()
 	{
 		UpdatePlayerHand(1, Player1HandBox);
 	}
+
+	// 更新檯面的牌
+	if (Player0CardBoard)
+	{
+		UpdatePlayedCards(0, Player0CardBoard);
+	}
+	
+	if (Player1CardBoard)
+	{
+		UpdatePlayedCards(1, Player1CardBoard);
+	}
 }
 
 void UCardGameHUD::OnCardClicked(int32 CardIndex)
@@ -351,6 +362,81 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 					// 垂直對齊改為底部對齊，避免被拉伸到整個容器高度 (500)
 					HandSlot->SetVerticalAlignment(VAlign_Bottom);
+				}
+			}
+		}
+	}
+}
+
+void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
+{
+	if (!BoardBox || !BattleGameMode)
+	{
+		return;
+	}
+
+	// 獲取玩家已出的牌
+	// 根據 PlayerId 選擇對應的函數
+	const TArray<FCard>& PlayedCards = (PlayerId == 0) ? 
+		BattleGameMode->GetPlayer0PlayedCards() : 
+		BattleGameMode->GetPlayer1PlayedCards();
+
+	// 簡單檢查數量，若不同則重建
+	if (BoardBox->GetChildrenCount() == PlayedCards.Num())
+	{
+		return;
+	}
+
+	BoardBox->ClearChildren();
+
+	for (int32 i = 0; i < PlayedCards.Num(); ++i)
+	{
+		if (CardWidgetClass)
+		{
+			UCardWidget* NewCard = CreateWidget<UCardWidget>(this, CardWidgetClass);
+			if (NewCard)
+			{
+				FCardData DisplayData;
+				bool bDataFound = false;
+
+				if (CardDataTable)
+				{
+					FName RowName = FName(*FString::FromInt(PlayedCards[i].CardValue));
+					static const FString ContextString(TEXT("PlayedCardContext"));
+					FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+
+					if (CardData)
+					{
+						DisplayData = *CardData;
+						bDataFound = true;
+					}
+				}
+
+				if (!bDataFound)
+				{
+					DisplayData.Name = FString::Printf(TEXT("Card %d"), PlayedCards[i].CardValue);
+					DisplayData.Power = PlayedCards[i].CardValue;
+					DisplayData.Description = TEXT("");
+				}
+
+				NewCard->UpdateCardDisplay(DisplayData);
+				
+				// 檯面上的牌不可點擊
+				NewCard->SetIsEnabled(true); // 保持啟用才能看到，但移除點擊回調
+				NewCard->SetOnClicked(FOnCardClicked()); 
+
+				// 確保沒有旋轉或縮放
+				NewCard->SetRenderTransformAngle(0.0f);
+				NewCard->SetRenderScale(FVector2D(0.8f, 0.8f)); // 稍微縮小一點以適應版面
+
+				UHorizontalBoxSlot* CardSlot = Cast<UHorizontalBoxSlot>(BoardBox->AddChild(NewCard));
+				if (CardSlot)
+				{
+					// 排列整齊，不能重疊 -> 使用正數 Padding
+					CardSlot->SetPadding(FMargin(5.0f));
+					CardSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+					CardSlot->SetVerticalAlignment(VAlign_Center);
+					CardSlot->SetHorizontalAlignment(HAlign_Center);
 				}
 			}
 		}

@@ -303,6 +303,9 @@ void ACardBattle::DetermineFirstPlayer()
 
 void ACardBattle::GoToNextTurn()
 {
+	// 切換讓另一位玩家開始新的一回合 (避免同一人連續出牌：結束上一局又開始下一局)
+	CurrentTurnPlayerId = 1 - CurrentTurnPlayerId;
+
 	// 重置本回合的出牌狀態
 	bPlayer0CardPlayed = false;
 	bPlayer1CardPlayed = false;

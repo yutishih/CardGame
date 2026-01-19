@@ -8,8 +8,6 @@
 #include "BattlePlayer.h"
 #include "CardBattle.generated.h"
 
-// 前向聲明
-class UCardGameSimpleHUD;
 
 // 遊戲狀態枚舉
 UENUM(BlueprintType)

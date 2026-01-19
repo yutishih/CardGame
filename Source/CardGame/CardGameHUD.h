@@ -65,6 +65,13 @@ protected:
 	UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
 	TObjectPtr<UHorizontalBox> Player1HandBox;
 
+	// 新增：檯面上的牌
+	UPROPERTY(meta = (BindWidgetOptional), BlueprintReadOnly)
+	TObjectPtr<UHorizontalBox> Player0CardBoard;
+
+	UPROPERTY(meta = (BindWidgetOptional), BlueprintReadOnly)
+	TObjectPtr<UHorizontalBox> Player1CardBoard;
+
 	UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
 	TObjectPtr<UTextBlock> WinnerText;
 
@@ -83,6 +90,9 @@ private:
 
 	// 更新玩家手牌顯示
 	void UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox);
+
+	// 更新檯面上已出的牌顯示
+	void UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox);
 
 	// 獲取遊戲狀態文字
 	FString GetBattleStateString(EBattleState State) const;
