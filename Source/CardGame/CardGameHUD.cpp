@@ -212,6 +212,34 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 	// 獲取玩家手牌
 	const TArray<FCard>& Hand = BattleGameMode->GetPlayerHand(PlayerId);
 
+	// 動態計算間距與旋轉參數
+	const float MaxHandWidth = 900.0f; // 手牌最大寬度限制 (可依據螢幕解析度調整)
+	const float CardWidth = 150.0f;    // 假設卡牌顯示寬度
+	const float BasePadding = -25.0f;  // 預設負邊距 (重疊量)
+
+	float CurrentPadding = BasePadding;
+
+	// 如果卡牌數量多，計算需要的壓縮邊距
+	// 總寬度 ~= Num * (CardWidth + 2 * Padding)
+	if (Hand.Num() > 0)
+	{
+		float CurrentTotalWidth = (float)Hand.Num() * (CardWidth + 2.0f * BasePadding);
+		if (CurrentTotalWidth > MaxHandWidth)
+		{
+			// 計算新的 Padding 以符合最大寬度
+			// Padding = ((MaxWidth / Num) - CardWidth) / 2
+			CurrentPadding = ((MaxHandWidth / (float)Hand.Num()) - CardWidth) * 0.5f;
+		}
+	}
+
+	// 根據數量調整旋轉角度步長，避免扇形太寬
+	float AngleStep = 5.0f;
+	if (Hand.Num() > 8)
+	{
+		// 限制最大展開角度範圍
+		AngleStep = 40.0f / ((float)Hand.Num() * 0.5f);
+	}
+
 	// 檢查是否需要重建 (數量不同時才重建)
 	// 注意：這裡簡單用數量判斷。如果遊戲中有交換手牌等機制，可能需要更嚴謹的檢查 (例如檢查 CardID)
 	if (HandBox->GetChildrenCount() == Hand.Num())
@@ -262,6 +290,20 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					// 清除綁定，避免誤觸
 					CardWidget->SetOnClicked(FOnCardClicked()); 
 				}
+
+				// 更新佈局參數 (動態調整 Padding)
+				if (UHorizontalBoxSlot* HSlot = Cast<UHorizontalBoxSlot>(CardWidget->Slot))
+				{
+					HSlot->SetPadding(FMargin(CurrentPadding, 0.0f, CurrentPadding, 0.0f));
+				}
+
+				// 更新扇形效果
+				float CenterIndex = (Hand.Num() - 1) / 2.0f;
+				float DistanceFromCenter = i - CenterIndex;
+				float RotationAngle = DistanceFromCenter * AngleStep; 
+
+				CardWidget->SetRenderTransformPivot(FVector2D(0.5f, 2.0f));
+				CardWidget->SetRenderTransformAngle(RotationAngle);
 			}
 			else
 			{
@@ -342,7 +384,7 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 				// 扇形效果計算
 				float CenterIndex = (Hand.Num() - 1) / 2.0f;
 				float DistanceFromCenter = i - CenterIndex;
-				float RotationAngle = DistanceFromCenter * 5.0f; // 每張卡旋轉 5 度
+				float RotationAngle = DistanceFromCenter * AngleStep; // 使用動態計算的 AngleStep
 
 				// 設定旋轉軸心在卡片下方，產生扇形效果
 				// 0.5 = X軸中心, 2.0 = Y軸 (卡片高度的 2 倍處，即卡片底部再往下一個卡片高度)
@@ -355,9 +397,8 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 				UHorizontalBoxSlot* HandSlot = Cast<UHorizontalBoxSlot>(HandBox->AddChild(NewCard));
 				if (HandSlot)
 				{
-					// 設置負邊距，讓卡牌重疊 (左右各-25，總重疊50) - 配合縮小後的卡牌
-					// 這樣可以讓卡牌之間緊密排列並部分重疊，配合旋轉形成扇形
-					HandSlot->SetPadding(FMargin(-25.0f, 0.0f, -25.0f, 0.0f));
+					// 設置動態邊距
+					HandSlot->SetPadding(FMargin(CurrentPadding, 0.0f, CurrentPadding, 0.0f));
 					// 設置為自動大小，讓卡片保持自己的寬度
 					HandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 					// 垂直對齊改為底部對齊，避免被拉伸到整個容器高度 (500)
