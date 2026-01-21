@@ -422,10 +422,81 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 		BattleGameMode->GetPlayer0PlayedCards() : 
 		BattleGameMode->GetPlayer1PlayedCards();
 
-	// 簡單檢查數量，若不同則重建
+	// 動態計算間距
+	const float MaxBoardWidth = 800.0f; // 檯面最大寬度
+	const float CardScale = 0.8f;
+	const float CardWidth = 150.0f * CardScale; 
+	const float BasePadding = 5.0f;    // 預設間距 (正數表示分開)
+
+	float CurrentPadding = BasePadding;
+
+	// 如果卡牌數量多，計算需要的壓縮邊距
+	if (PlayedCards.Num() > 0)
+	{
+		float CurrentTotalWidth = (float)PlayedCards.Num() * (CardWidth + 2.0f * BasePadding);
+		if (CurrentTotalWidth > MaxBoardWidth)
+		{
+			// 計算新的 Padding 以符合最大寬度
+			// 這裡計算出的 Padding 可能是負數，這會讓卡牌重疊，這正是我們想要的
+			CurrentPadding = ((MaxBoardWidth / (float)PlayedCards.Num()) - CardWidth) * 0.5f;
+		}
+	}
+
+	// 檢查是否需要重建 (數量不同時才重建)
 	if (BoardBox->GetChildrenCount() == PlayedCards.Num())
 	{
-		return;
+		// 數量相同，嘗試更新現有 Widget 的資料與佈局
+		for (int32 i = 0; i < PlayedCards.Num(); ++i)
+		{
+			UWidget* ChildWidget = BoardBox->GetChildAt(i);
+			if (UCardWidget* CardWidget = Cast<UCardWidget>(ChildWidget))
+			{
+				// 更新資料 (以防資料顯示有變，雖然打出的牌通常不變)
+				FCardData DisplayData;
+				bool bDataFound = false;
+				if (CardDataTable)
+				{
+					FName RowName = FName(*FString::FromInt(PlayedCards[i].CardValue));
+					static const FString ContextString(TEXT("PlayedCardContext"));
+					FCardData* CardData = CardDataTable->FindRow<FCardData>(RowName, ContextString);
+					if (CardData)
+					{
+						DisplayData = *CardData;
+						bDataFound = true;
+					}
+				}
+
+				if (!bDataFound)
+				{
+					DisplayData.Name = FString::Printf(TEXT("Card %d"), PlayedCards[i].CardValue);
+					DisplayData.Power = PlayedCards[i].CardValue;
+					DisplayData.Description = TEXT("");
+				}
+				CardWidget->UpdateCardDisplay(DisplayData);
+
+				// 更新佈局參數 (動態調整 Padding)
+				if (UHorizontalBoxSlot* HSlot = Cast<UHorizontalBoxSlot>(CardWidget->Slot))
+				{
+					HSlot->SetPadding(FMargin(CurrentPadding, 0.0f, CurrentPadding, 0.0f));
+				}
+				
+				// 確保沒有旋轉或縮放
+				CardWidget->SetRenderTransformAngle(0.0f);
+				CardWidget->SetRenderScale(FVector2D(CardScale, CardScale));
+			}
+			else
+			{
+				// 類型不對，需要重建 (理論上很少發生)
+				BoardBox->ClearChildren();
+				break;
+			}
+		}
+
+		// 只有在完全匹配且更新成功的情況下才返回
+		if (BoardBox->GetChildrenCount() == PlayedCards.Num())
+		{
+			return;
+		}
 	}
 
 	BoardBox->ClearChildren();
@@ -468,13 +539,13 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 
 				// 確保沒有旋轉或縮放
 				NewCard->SetRenderTransformAngle(0.0f);
-				NewCard->SetRenderScale(FVector2D(0.8f, 0.8f)); // 稍微縮小一點以適應版面
+				NewCard->SetRenderScale(FVector2D(CardScale, CardScale)); // 稍微縮小一點以適應版面
 
 				UHorizontalBoxSlot* CardSlot = Cast<UHorizontalBoxSlot>(BoardBox->AddChild(NewCard));
 				if (CardSlot)
 				{
-					// 排列整齊，不能重疊 -> 使用正數 Padding
-					CardSlot->SetPadding(FMargin(5.0f));
+					// 使用動態計算的 Padding
+					CardSlot->SetPadding(FMargin(CurrentPadding, 0.0f, CurrentPadding, 0.0f));
 					CardSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 					CardSlot->SetVerticalAlignment(VAlign_Center);
 					CardSlot->SetHorizontalAlignment(HAlign_Center);
