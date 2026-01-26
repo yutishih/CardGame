@@ -118,89 +118,11 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 void UCardWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
-
-	FVector2D LocalSize = InGeometry.GetLocalSize();
-	FVector2D AbsoluteSize = InGeometry.GetAbsoluteSize();
-	
-	UE_LOG(LogTemp, Warning, TEXT("CardWidget Hovered: Index %d. Local Size: %s, Absolute Size: %s"), 
-		CardIndex, *LocalSize.ToString(), *AbsoluteSize.ToString());
-
-	if (GEngine)
-	{
-		FString Msg = FString::Printf(TEXT("HOVER Index %d! Size: %s"), CardIndex, *LocalSize.ToString());
-		GEngine->AddOnScreenDebugMessage(200 + CardIndex, 2.0f, FColor::Red, Msg);
-	}
 }
 
 void UCardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-
-	static float LogTimer = 0.0f;
-	LogTimer += InDeltaTime;
-
-	if (LogTimer >= 1.0f) // Log every 1 second
-	{
-		LogTimer = 0.0f;
-		
-		FVector2D WidgetSize = MyGeometry.GetLocalSize();
-		UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Entire Widget Size: %s"), *WidgetSize.ToString());
-
-		if (CardImage)
-		{
-			FVector2D LocalSize = CardImage->GetCachedGeometry().GetLocalSize();
-			FVector2D AbsoluteSize = CardImage->GetCachedGeometry().GetAbsoluteSize();
-			
-			UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: CardImage Size: %s, Absolute Size: %s, Visibility: %s, RenderOpacity: %f"), 
-				*LocalSize.ToString(), 
-				*AbsoluteSize.ToString(),
-				*UEnum::GetValueAsString(CardImage->GetVisibility()),
-				CardImage->GetRenderOpacity()
-			);
-
-			// Check if Brush size is correct
-			FSlateBrush Brush = CardImage->GetBrush();
-			UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Brush ImageSize: %s, ResourceObject: %s"), 
-				*Brush.ImageSize.ToString(),
-				Brush.GetResourceObject() ? *Brush.GetResourceObject()->GetName() : TEXT("NULL")
-			);
-
-			if (GEngine)
-			{
-				FString Msg = FString::Printf(TEXT("Card Index %d Size: %s (Desired: 125x175)"), CardIndex, *Brush.ImageSize.ToString());
-				GEngine->AddOnScreenDebugMessage(100 + CardIndex, 1.0f, FColor::Green, Msg);
-			}
-
-			// Log Parent and Slot info
-			if (CardImage->GetParent())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: CardImage Parent: %s, Slot Type: %s"), 
-					*CardImage->GetParent()->GetClass()->GetName(),
-					CardImage->Slot ? *CardImage->Slot->GetClass()->GetName() : TEXT("NULL")
-				);
-
-				// Traverse up to debug hierarchy sizes
-				UPanelWidget* Current = CardImage->GetParent();
-				while (Current)
-				{
-					FVector2D CurSize = Current->GetCachedGeometry().GetLocalSize();
-					UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Hierarchy: %s, Size: %s"), *Current->GetClass()->GetName(), *CurSize.ToString());
-					
-					if (USizeBox* SB = Cast<USizeBox>(Current))
-					{
-						UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: SizeBox Settings - WidthOverride: %f, HeightOverride: %f"), SB->GetWidthOverride(), SB->GetHeightOverride());
-					}
-
-					if (Current == GetRootWidget())
-					{
-						UE_LOG(LogTemp, Warning, TEXT("CardWidget Debug: Reached RootWidget"));
-						break;
-					}
-					Current = Current->GetParent();
-				}
-			}
-		}
-	}
 }
 
 void UCardWidget::ForceCardSize()
