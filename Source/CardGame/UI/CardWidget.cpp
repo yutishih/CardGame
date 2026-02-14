@@ -6,6 +6,9 @@
 #include "Components/PanelWidget.h"
 #include "Components/SizeBox.h"
 #include "Components/Button.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
+#include "InputCoreTypes.h"
+#include "CardDragDropOperation.h"
 #include "Engine/Engine.h"
 
 void UCardWidget::NativeConstruct()
@@ -25,9 +28,85 @@ void UCardWidget::NativeConstruct()
 	ForceCardSize();
 }
 
+FReply UCardWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (bIsDraggable && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+	}
+
+	return Super::NativeOnPreviewMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UCardWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (bIsDraggable && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+	}
+
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UCardWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+
+	if (!bIsDraggable)
+	{
+		return;
+	}
+
+	UCardDragDropOperation* DragOperation = NewObject<UCardDragDropOperation>();
+	if (!DragOperation)
+	{
+		return;
+	}
+
+	DragOperation->CardIndex = CardIndex;
+	DragOperation->Payload = this;
+	DragOperation->Pivot = EDragPivot::CenterCenter;
+
+	UCardWidget* DragVisual = nullptr;
+	if (APlayerController* OwningPC = GetOwningPlayer())
+	{
+		DragVisual = CreateWidget<UCardWidget>(OwningPC, GetClass());
+	}
+	else
+	{
+		DragVisual = CreateWidget<UCardWidget>(GetWorld(), GetClass());
+	}
+
+	if (DragVisual)
+	{
+		DragVisual->CardIndex = CardIndex;
+		DragVisual->SetDraggable(false);
+		DragVisual->SetIsEnabled(false);
+		DragVisual->SetRenderOpacity(0.9f);
+
+		if (bHasCachedCardData)
+		{
+			DragVisual->UpdateCardDisplay(CachedCardData);
+		}
+
+		DragOperation->DefaultDragVisual = DragVisual;
+	}
+	else
+	{
+		DragOperation->DefaultDragVisual = nullptr;
+	}
+
+	OutOperation = DragOperation;
+}
+
 void UCardWidget::SetOnClicked(FOnCardClicked InOnClicked)
 {
 	OnClicked = InOnClicked;
+}
+
+void UCardWidget::SetDraggable(bool bInDraggable)
+{
+	bIsDraggable = bInDraggable;
 }
 
 void UCardWidget::OnCardClicked()
@@ -45,6 +124,9 @@ void UCardWidget::OnCardClicked()
 
 void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 {
+	CachedCardData = CardData;
+	bHasCachedCardData = true;
+
 	// 更新名稱
 	if (NameText)
 	{

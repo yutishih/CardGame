@@ -31,6 +31,9 @@ public:
 
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeConstruct() override;
+	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
@@ -75,13 +78,23 @@ protected:
 	// 實際套用發光外觀
 	void ApplyGlowEffect();
 
+	// 快取目前顯示資料，供拖曳視覺複製使用
+	FCardData CachedCardData;
+	bool bHasCachedCardData = false;
+
 	// 是否啟用發光
 	bool bGlowEffectEnabled = false;
 
 public:
 	// 設定點擊回調
 	void SetOnClicked(FOnCardClicked InOnClicked);
+
+	// 設定是否可被拖曳（通常只有玩家手牌可拖）
+	void SetDraggable(bool bInDraggable);
 	
 	// 儲存卡牌索引，方便回傳
 	int32 CardIndex = -1;
+
+	// 是否允許拖曳
+	bool bIsDraggable = false;
 };

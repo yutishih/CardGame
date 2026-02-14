@@ -10,7 +10,9 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Components/ProgressBar.h"
+#include "Blueprint/DragDropOperation.h"
 #include "Kismet/GameplayStatics.h"
+#include "UI/CardDragDropOperation.h"
 
 void UCardGameHUD::NativeConstruct()
 {
@@ -206,6 +208,59 @@ void UCardGameHUD::UpdateUI()
 	}
 }
 
+bool UCardGameHUD::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	if (!BattleGameMode || !InOperation)
+	{
+		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	}
+
+	UCardDragDropOperation* CardOp = Cast<UCardDragDropOperation>(InOperation);
+	if (!CardOp || CardOp->CardIndex < 0)
+	{
+		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	}
+
+	const FVector2D DropPos = InDragDropEvent.GetScreenSpacePosition();
+	const bool bDroppedOnPlayer0Board = Player0CardBoardBorder
+		? Player0CardBoardBorder->GetCachedGeometry().IsUnderLocation(DropPos)
+		: (Player0CardBoard && Player0CardBoard->GetCachedGeometry().IsUnderLocation(DropPos));
+
+	if (!bDroppedOnPlayer0Board)
+	{
+		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	}
+
+	OnCardClicked(CardOp->CardIndex);
+	return true;
+}
+
+bool UCardGameHUD::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	if (!InOperation)
+	{
+		return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
+	}
+
+	UCardDragDropOperation* CardOp = Cast<UCardDragDropOperation>(InOperation);
+	if (!CardOp)
+	{
+		return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
+	}
+
+	const FVector2D DragPos = InDragDropEvent.GetScreenSpacePosition();
+	const bool bOverPlayer0Board = Player0CardBoardBorder
+		? Player0CardBoardBorder->GetCachedGeometry().IsUnderLocation(DragPos)
+		: (Player0CardBoard && Player0CardBoard->GetCachedGeometry().IsUnderLocation(DragPos));
+
+	if (bOverPlayer0Board)
+	{
+		return true;
+	}
+
+	return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
+}
+
 void UCardGameHUD::OnCardClicked(int32 CardIndex)
 {
 	if (BattleGameMode)
@@ -297,11 +352,13 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 				if (PlayerId == 0)
 				{
 					CardWidget->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
+					CardWidget->SetDraggable(true);
 				}
 				else
 				{
 					// 清除綁定，避免誤觸
 					CardWidget->SetOnClicked(FOnCardClicked()); 
+					CardWidget->SetDraggable(false);
 				}
 
 				// 手牌不啟用發光效果
@@ -395,6 +452,11 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 				if (PlayerId == 0)
 				{
 					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
+					NewCard->SetDraggable(true);
+				}
+				else
+				{
+					NewCard->SetDraggable(false);
 				}
 
 				// 手牌不啟用發光效果
@@ -576,6 +638,7 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 				// 檯面上的牌不可點擊
 				NewCard->SetIsEnabled(true); // 保持啟用才能看到，但移除點擊回調
 				NewCard->SetOnClicked(FOnCardClicked()); 
+				NewCard->SetDraggable(false);
 
 				// 確保沒有旋轉或縮放
 				NewCard->SetRenderTransformAngle(0.0f);
