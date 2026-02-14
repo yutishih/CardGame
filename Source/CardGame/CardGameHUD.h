@@ -8,6 +8,7 @@
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
 #include "Components/VerticalBox.h"
+#include "Components/Border.h"
 #include "Components/ProgressBar.h"
 #include "CardBattle.h"
 #include "CardGameHUD.generated.h"
@@ -71,6 +72,13 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional), BlueprintReadOnly)
 	TObjectPtr<UHorizontalBox> Player1CardBoard;
+
+	// 出牌區白框（可選，建議在 WBP_GameHUD 以 Border 包住 CardBoard）
+	UPROPERTY(meta = (BindWidgetOptional), BlueprintReadOnly)
+	TObjectPtr<UBorder> Player0CardBoardBorder;
+
+	UPROPERTY(meta = (BindWidgetOptional), BlueprintReadOnly)
+	TObjectPtr<UBorder> Player1CardBoardBorder;
 
 	UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
 	TObjectPtr<UTextBlock> WinnerText;

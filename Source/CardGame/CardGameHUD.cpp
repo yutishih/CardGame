@@ -53,6 +53,19 @@ void UCardGameHUD::NativeConstruct()
 			VSlot->SetHorizontalAlignment(HAlign_Center);
 		}
 	}
+
+	// 初始化 CardBoard 白框樣式（需在 WBP 中提供 Border）
+	if (Player0CardBoardBorder)
+	{
+		Player0CardBoardBorder->SetPadding(FMargin(2.0f));
+		Player0CardBoardBorder->SetBrushColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+	}
+
+	if (Player1CardBoardBorder)
+	{
+		Player1CardBoardBorder->SetPadding(FMargin(2.0f));
+		Player1CardBoardBorder->SetBrushColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+	}
 }
 
 void UCardGameHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -291,6 +304,9 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					CardWidget->SetOnClicked(FOnCardClicked()); 
 				}
 
+				// 手牌不啟用發光效果
+				CardWidget->SetGlowEffectEnabled(false);
+
 				// 更新佈局參數 (動態調整 Padding)
 				if (UHorizontalBoxSlot* HSlot = Cast<UHorizontalBoxSlot>(CardWidget->Slot))
 				{
@@ -381,6 +397,9 @@ void UCardGameHUD::UpdatePlayerHand(int32 PlayerId, UHorizontalBox* HandBox)
 					NewCard->SetOnClicked(FOnCardClicked::CreateUObject(this, &UCardGameHUD::OnCardClicked));
 				}
 
+				// 手牌不啟用發光效果
+				NewCard->SetGlowEffectEnabled(false);
+
 				// 扇形效果計算
 				float CenterIndex = (Hand.Num() - 1) / 2.0f;
 				float DistanceFromCenter = i - CenterIndex;
@@ -421,6 +440,24 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 	const TArray<FCard>& PlayedCards = (PlayerId == 0) ? 
 		BattleGameMode->GetPlayer0PlayedCards() : 
 		BattleGameMode->GetPlayer1PlayedCards();
+
+	// 判斷 Hover 狀態：只看檯面區本身（不再用子卡牌 Hover 觸發）
+	UBorder* BoardBorder = (PlayerId == 0) ? Player0CardBoardBorder.Get() : Player1CardBoardBorder.Get();
+	const bool bBoardHovered = BoardBorder ? BoardBorder->IsHovered() : BoardBox->IsHovered();
+
+	// 檯面本身的發光感：放大 + 提升透明度（亮度感）
+	BoardBox->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	BoardBox->SetRenderScale(FVector2D(1.0f, 1.0f));
+	BoardBox->SetRenderOpacity(bBoardHovered ? 1.0f : 0.9f);
+
+	// 白框亮度：Hover 時更亮
+	if (BoardBorder)
+	{
+		BoardBorder->SetPadding(FMargin(2.0f));
+		BoardBorder->SetBrushColor(bBoardHovered
+			? FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)
+			: FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+	}
 
 	// 動態計算間距
 	const float MaxBoardWidth = 800.0f; // 檯面最大寬度
@@ -483,6 +520,9 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 				// 確保沒有旋轉或縮放
 				CardWidget->SetRenderTransformAngle(0.0f);
 				CardWidget->SetRenderScale(FVector2D(CardScale, CardScale));
+
+				// Hover 到 CardBoard 或卡牌本身時顯示發光
+				CardWidget->SetGlowEffectEnabled(bBoardHovered || CardWidget->IsHovered());
 			}
 			else
 			{
@@ -540,6 +580,9 @@ void UCardGameHUD::UpdatePlayedCards(int32 PlayerId, UHorizontalBox* BoardBox)
 				// 確保沒有旋轉或縮放
 				NewCard->SetRenderTransformAngle(0.0f);
 				NewCard->SetRenderScale(FVector2D(CardScale, CardScale)); // 稍微縮小一點以適應版面
+
+				// 新建立的牌，依當前 Hover 狀態決定是否發光
+				NewCard->SetGlowEffectEnabled(BoardBox->IsHovered() || NewCard->IsHovered());
 
 				UHorizontalBoxSlot* CardSlot = Cast<UHorizontalBoxSlot>(BoardBox->AddChild(NewCard));
 				if (CardSlot)

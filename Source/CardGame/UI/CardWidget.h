@@ -32,6 +32,11 @@ public:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeConstruct() override;
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+
+	// 設定發光效果（供 HUD 在 Hover 狀態下控制）
+	UFUNCTION(BlueprintCallable, Category = "Card")
+	void SetGlowEffectEnabled(bool bEnabled);
 
 protected:
 	// 綁定 UI 元件 (需要在 Widget Blueprint 中建立同名的元件)
@@ -66,6 +71,12 @@ protected:
 
 	// 點擊回調 (傳遞 CardWidget 本身或索引)
 	FOnCardClicked OnClicked;
+
+	// 實際套用發光外觀
+	void ApplyGlowEffect();
+
+	// 是否啟用發光
+	bool bGlowEffectEnabled = false;
 
 public:
 	// 設定點擊回調

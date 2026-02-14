@@ -113,11 +113,63 @@ void UCardWidget::UpdateCardDisplay(const FCardData& CardData)
 			}
 		}
 	}
+
+	// 每次更新資料後，重新套用目前的發光狀態（避免被重設）
+	ApplyGlowEffect();
 }
 
 void UCardWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+}
+
+void UCardWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+}
+
+void UCardWidget::SetGlowEffectEnabled(bool bEnabled)
+{
+	bGlowEffectEnabled = bEnabled;
+	ApplyGlowEffect();
+}
+
+void UCardWidget::ApplyGlowEffect()
+{
+	if (bGlowEffectEnabled)
+	{
+		if (BackgroundImage)
+		{
+			BackgroundImage->SetColorAndOpacity(FLinearColor(1.2f, 1.2f, 0.8f, 1.0f));
+		}
+
+		if (CardImage)
+		{
+			CardImage->SetColorAndOpacity(FLinearColor(1.1f, 1.1f, 1.0f, 1.0f));
+		}
+
+		if (ClickButton)
+		{
+			ClickButton->SetBackgroundColor(FLinearColor(1.1f, 1.1f, 1.0f, 1.0f));
+		}
+	}
+	else
+	{
+		if (BackgroundImage)
+		{
+			BackgroundImage->SetColorAndOpacity(FLinearColor::White);
+		}
+
+		if (CardImage)
+		{
+			CardImage->SetColorAndOpacity(FLinearColor::White);
+		}
+
+		if (ClickButton)
+		{
+			ClickButton->SetBackgroundColor(FLinearColor::White);
+		}
+	}
 }
 
 void UCardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
