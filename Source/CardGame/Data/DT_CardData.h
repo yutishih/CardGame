@@ -15,7 +15,7 @@ struct FCardData : public FTableRowBase
 
     // 稀有度（例如 Common, Rare, Epic, Legendary）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
-    FString Rare;
+    FString Rarity;
 
     // 攻擊力或能力值
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
@@ -23,7 +23,11 @@ struct FCardData : public FTableRowBase
 
     // 攻擊距離（若為近戰、遠程等可使用 float 或 int）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
-    float Range;
+    int32 AttackType;
+
+    // 卡牌類型
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
+    int32 CardType;
 
     // 敘述說明
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Card")
