@@ -1,6 +1,7 @@
 // MainMenuWidget.cpp
 
 #include "MainMenuWidget.h"
+#include "MainMenuGameMode.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
@@ -135,11 +136,31 @@ FReply SMainMenuWidget::OnStartClicked()
 
 FReply SMainMenuWidget::OnDeckClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Deck button clicked - Feature coming soon"));
-	
-	// TODO: 實作套牌編輯功能
-	// 目前只顯示訊息
-	
+	UE_LOG(LogTemp, Warning, TEXT("Deck button clicked - Opening Deck Builder"));
+
+	UWorld* World = nullptr;
+	if (GEngine)
+	{
+		World = GEngine->GetCurrentPlayWorld();
+		if (!World && GEngine->GameViewport)
+		{
+			World = GEngine->GameViewport->GetWorld();
+		}
+	}
+
+	if (World)
+	{
+		AMainMenuGameMode* GameMode = Cast<AMainMenuGameMode>(World->GetAuthGameMode());
+		if (GameMode)
+		{
+			GameMode->ShowDeckBuilder();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("DeckClicked: 無法取得 AMainMenuGameMode"));
+		}
+	}
+
 	return FReply::Handled();
 }
 

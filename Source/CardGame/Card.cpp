@@ -81,6 +81,38 @@ void UCardDeck::DrawCards(int32 NumberOfCards, TArray<FCard>& OutCards)
 	}
 }
 
+void UCardDeck::InitializeFromCustomDeck(UDataTable* DataTable, const TArray<FName>& RowNames)
+{
+	Deck.Empty();
+
+	for (const FName& RowName : RowNames)
+	{
+		FString RowString = RowName.ToString();
+		if (RowString.IsNumeric())
+		{
+			int32 CardID = FCString::Atoi(*RowString);
+			Deck.Add(FCard(CardID));
+		}
+	}
+
+	// 若清單為空，回退到 DataTable 全牌或預設牌組
+	if (Deck.Num() == 0)
+	{
+		if (DataTable)
+		{
+			InitializeFromDataTable(DataTable);
+		}
+		else
+		{
+			Initialize();
+		}
+		return;
+	}
+
+	ShuffleDeck();
+	CurrentIndex = 0;
+}
+
 void UCardDeck::Reset()
 {
 	Initialize();

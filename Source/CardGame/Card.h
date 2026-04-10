@@ -39,8 +39,11 @@ public:
 	// 初始化牌組
 	void Initialize();
 
-	// 從 DataTable 初始化牌組
+	// 從 DataTable 初始化牌組（使用全部卡牌）
 	void InitializeFromDataTable(class UDataTable* DataTable);
+
+	// 從自訂 RowName 清單初始化牌組（玩家編輯後的牌組）
+	void InitializeFromCustomDeck(class UDataTable* DataTable, const TArray<FName>& RowNames);
 
 	// 從牌組中抽取指定數量的卡牌
 	void DrawCards(int32 NumberOfCards, TArray<FCard>& OutCards);

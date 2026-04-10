@@ -3,6 +3,7 @@
 #include "CardBattle.h"
 #include "CardGamePlayer.h"
 #include "CardGameHUD.h"
+#include "DeckManagerSubsystem.h"
 #include "Data/DT_CardData.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
@@ -245,13 +246,36 @@ void ACardBattle::InitializeGame()
 			PlayerDecks[i] = NewObject<UCardDeck>();
 		}
 
-		if (CardDataTable)
+		// Player 0 使用玩家自訂牌組（若有），Player 1 (AI) 使用預設牌組
+		if (i == 0)
 		{
-			PlayerDecks[i]->InitializeFromDataTable(CardDataTable);
+			UGameInstance* GI = GetGameInstance();
+			UDeckManagerSubsystem* DeckManager = GI ? GI->GetSubsystem<UDeckManagerSubsystem>() : nullptr;
+
+			if (DeckManager && DeckManager->HasCustomDeck())
+			{
+				PlayerDecks[i]->InitializeFromCustomDeck(CardDataTable, DeckManager->GetPlayerDeck());
+				UE_LOG(LogTemp, Log, TEXT("CardBattle: Player 0 使用自訂牌組（%d 張）"), DeckManager->GetDeckSize());
+			}
+			else if (CardDataTable)
+			{
+				PlayerDecks[i]->InitializeFromDataTable(CardDataTable);
+			}
+			else
+			{
+				PlayerDecks[i]->Initialize();
+			}
 		}
 		else
 		{
-			PlayerDecks[i]->Initialize();
+			if (CardDataTable)
+			{
+				PlayerDecks[i]->InitializeFromDataTable(CardDataTable);
+			}
+			else
+			{
+				PlayerDecks[i]->Initialize();
+			}
 		}
 
 		Players[i]->SetDeck(PlayerDecks[i]);
